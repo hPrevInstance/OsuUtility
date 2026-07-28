@@ -18,7 +18,7 @@ set(CMAKE_PREFIX_PATH "/mnt/d/Qt/6.11.1/mingw_64") # 请核对版本号！
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # 6. 将 src 目录下的所有 .cpp 文件收集为源文件变量（不包括 main.cpp）
-file(GLOB SRC_FILES "src/*.cpp")
+file(GLOB_RECURSE SRC_FILES "src/*.cpp")
 # 将 include 目录添加到头文件搜索路径
 include_directories(include)
 
@@ -26,6 +26,8 @@ include_directories(include)
 add_executable(${PROJECT_NAME} 
     app/main.cpp
     ${SRC_FILES}
+    include/core/TextProcessor.h
+    src/core/AudioProcessor.cpp
 )
 
 # 8. 链接 Qt 库
