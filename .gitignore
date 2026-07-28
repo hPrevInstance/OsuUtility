@@ -10,5 +10,3 @@ build/
 
 # 忽略 Qt 生成的临时文件
 *.user
-
-.gitignore
