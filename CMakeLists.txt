@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 4. 关键：告诉 CMake 去哪里找 Windows 版的 Qt 库（注意改成你自己的实际路径）
-set(CMAKE_PREFIX_PATH "/mnt/d/Qt/6.7.2/mingw_64") # 请核对版本号！
+set(CMAKE_PREFIX_PATH "/mnt/d/Qt/6.11.1/mingw_64") # 请核对版本号！
 
 # 5. 寻找 Qt6 核心库和 Widgets 库（用于界面）
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
