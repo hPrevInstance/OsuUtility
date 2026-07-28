@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # 1. 设置项目名称和版本
-project(MyAudioTool VERSION 1.0.0)
+project(SpeedConverter VERSION 1.0.0)
 
 # 2. 指定交叉编译器（MinGW，生成 Windows exe）
 set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
@@ -33,3 +33,5 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Core 
     Qt6::Widgets
 )
+
+target_link_options(${PROJECT_NAME} PRIVATE -mwindows)
