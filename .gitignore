@@ -12,3 +12,7 @@ build/
 *.user
 
 rebuild.sh
+
+cpl.sh
+
+compile_commands.json

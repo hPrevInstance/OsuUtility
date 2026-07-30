@@ -3,6 +3,8 @@
 
 int main(int argc, char *argv[])
 {
+    system("chcp 65001");
+    system("cls");
     if (argc <= 3)
     {
         std::cout << "用法: spdconv [歌曲目录] [输出目录] [倍速]\n";
