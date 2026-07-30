@@ -33,13 +33,14 @@ namespace core
 {
     namespace fs = std::filesystem;
     /**
-     * @brief 一个用于处理用逗号分隔的字符串的文本解析类
+     * @brief 一个用于处理标点分隔的字符串的文本解析类
      */
-    class CommaLexer
+    class PunctLexer
     {
         const std::string &line;             // 要解析的字符串的引用，由于涉及外部状态改变，不使用std::string_view
         std::string::const_iterator currpos; // 当前位置
         std::string::const_iterator prevpos; // 前一个位置
+        std::string puncts;                  // 标点集合
         size_t cnt = 0;                      // 已处理字段个数
         bool isValid = true;                 // 解析器状态是否有效
 
@@ -47,9 +48,10 @@ namespace core
         /**
          * @brief 解析类构造函数
          *
-         * @param std::string_view 传入要解析的字符串
+         * @param std::string 传入要解析的字符串
+         * @param std::string 标点集合
          */
-        CommaLexer(const std::string &l) : line(l), currpos(line.begin()), prevpos(line.begin()), isValid(!line.empty()) {}
+        PunctLexer(const std::string &l, const std::string &pun = ",") : line(l), currpos(line.begin()), prevpos(line.begin()), puncts(pun), isValid(!line.empty()) {}
         /**
          * @brief 获取下一个字段
          *
@@ -62,7 +64,7 @@ namespace core
                 cnt++;
                 std::string field; // 拷贝
                 prevpos = currpos;
-                while (currpos != line.end() && *currpos != ',') // 还没到逗号位置
+                while (currpos != line.end() && puncts.find(*currpos) == std::string::npos) // 还没到标点位置
                 {
                     field.push_back(*currpos); // 拷贝本字段
                     currpos++;
@@ -211,7 +213,7 @@ namespace core
         for (auto b = beg + 1; b != end; ++b)
         {
             std::string str = *b;
-            CommaLexer cl(str);
+            PunctLexer cl(str, ",:");
             // 忽略换行符
             if (str.empty() || !cl || str == "\r" || str == "\n")
             {
@@ -224,14 +226,12 @@ namespace core
                 // 只处理预览时间字段，因为该章节有关字段仅此一个，即PreviewTime:...
                 if (str.find("PreviewTime") != std::string::npos)
                 {
-                    auto timepos = str.find(':'); // 分隔符
-                    if (timepos != std::string::npos)
-                    {
-                        // timepos + 1是为了跳过冒号
-                        uint32_t msec = std::stoul(str.substr(timepos + 1)); // 毫秒坐标
-                        msec = static_cast<uint32_t>(msec / speed);          // osu要求该字段必须为整型
-                        str.replace(timepos + 1, str.size(), std::to_string(msec));
-                    }
+                    // timepos + 1是为了跳过冒号
+                    cl.Ignore(1);
+                    uint32_t msec = std::stoul(cl.NextField()); // 毫秒坐标
+                    auto start = cl.CurrPos();
+                    msec = static_cast<uint32_t>(msec / speed); // osu要求该字段必须为整型
+                    str.replace(start, cl.CurrSize(), std::to_string(msec));
                 }
                 *dist = str; // 其他字段原样返回
             }
@@ -303,25 +303,24 @@ namespace core
                 // 获取该物件的类型
                 uint8_t type = std::stoi(cl.NextField());
                 // 如果为std滑条，则第2位为1
-                if (type & (1 << 2))
+                if (type & (1 << 1))
                 {
-                    cl.Ignore(2); // 向后跳2位是长度
+                    cl.Ignore(3); // 向后跳3位是长度
                 }
-                // 如果是mania长条或转盘，则3或8位为1
-                else if (type & (1 << 8) || type & (1 << 3))
+                // 如果是mania长条或转盘，则4或8位为1
+                else if (type & (1 << 7) || type & (1 << 3))
                 {
                     cl.Ignore(1); // 向后跳1位是长度
                 }
-                // 其他
-                else if (!(type & 1))
+                // 普通物件
+                else if (type & 1)
                 {
                     *dist = str;
                     continue;
                 }
-                // 普通物件
-                start = cl.NextPos(); // 向后跳时下一段开始位置
-                // 根据官方要求，这一位也是小数
-                double len = std::stod(cl.NextField()) / speed;
+                // 根据官方要求，这一位是整型
+                uint32_t len = static_cast<uint32_t>(std::stoul(cl.NextField()) / speed);
+                start = cl.CurrPos();
                 str.replace(start, cl.CurrSize(), std::to_string(len));
                 *dist = str;
             }
