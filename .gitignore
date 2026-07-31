@@ -10,9 +10,7 @@ build/
 
 # 忽略 Qt 生成的临时文件
 *.user
+*.dll
 
-rebuild.sh
-
-cpl.sh
 
 compile_commands.json

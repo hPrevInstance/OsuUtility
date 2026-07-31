@@ -34,6 +34,8 @@ add_executable(${PROJECT_NAME}
     src/core/AudioProcess.cpp
 )
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE FMT_HEADER_ONLY)
+
 # 8. 链接 Qt 库
 target_link_libraries(${PROJECT_NAME} 
     Qt6::Core 

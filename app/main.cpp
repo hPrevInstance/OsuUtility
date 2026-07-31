@@ -3,8 +3,6 @@
 
 int main(int argc, char *argv[])
 {
-    system("chcp 65001");
-    system("cls");
     if (argc <= 3)
     {
         std::cout << "用法: spdconv [歌曲目录] [输出目录] [倍速]\n";
@@ -23,7 +21,7 @@ int main(int argc, char *argv[])
         {
             name = name.substr(0, point);
         }
-        core::ExportFiles(dist, name + "x" + argv[3] + entry.extension().string(), lines);
+        core::ExportFiles(dist, name + " " + argv[3] + "x" + entry.extension().string(), lines);
     }
     std::cout << "所有文件已输出到: " << dist << std::endl;
     return 0;

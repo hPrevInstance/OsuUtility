@@ -4,7 +4,7 @@
  *
  * 该模块提供了完整的 osu谱面文件读写、解析和倍速缩放功能。
  * 支持处理General\Events\TimingPoints\HitObjects章节中的时间相关字段，
- * 并包含一个通用的逗号分隔字段解析器。
+ * 并包含一个通用的分隔字段解析器。
  *
  * 所有函数均为纯 C++17 实现，不依赖 Qt，可独立复用于命令行工具或其他 GUI 程序。
  *
@@ -17,6 +17,7 @@
  */
 
 #pragma once
+
 #include <fstream>
 #include <string>
 #include <vector>
@@ -24,6 +25,11 @@
 #include <filesystem>
 #include <iterator>
 #include <algorithm>
+#include <fmt/format.h>
+
+#ifndef FMT_HEADER_ONLY
+#define FMT_HEADER_ONLY
+#endif
 
 /**
  * @defgroup core 核心算法模块
@@ -37,21 +43,21 @@ namespace core
      */
     class PunctLexer
     {
-        const std::string &line;             // 要解析的字符串的引用，由于涉及外部状态改变，不使用std::string_view
-        std::string::const_iterator currpos; // 当前位置
-        std::string::const_iterator prevpos; // 前一个位置
-        std::string puncts;                  // 标点集合
-        size_t cnt = 0;                      // 已处理字段个数
-        bool isValid = true;                 // 解析器状态是否有效
+        const std::string &line; // 要解析的字符串的引用，由于涉及外部状态改变，不使用std::string_view
+        size_t beg = 0;          // 当前位置
+        size_t end = 0;          // 当前字段尾后位置
+        std::string puncts;      // 标点集合
+        size_t cnt = 0;          // 已处理字段个数
+        bool isValid = true;     // 解析器状态是否有效
 
     public:
         /**
          * @brief 解析类构造函数
          *
          * @param std::string 传入要解析的字符串
-         * @param std::string 标点集合
+         * @param std::string 分隔符集合
          */
-        PunctLexer(const std::string &l, const std::string &pun = ",") : line(l), currpos(line.begin()), prevpos(line.begin()), puncts(pun), isValid(!line.empty()) {}
+        PunctLexer(const std::string &l, const std::string &pun = ",") : line(l), puncts(pun), isValid(!line.empty()) {}
         /**
          * @brief 获取下一个字段
          *
@@ -61,38 +67,41 @@ namespace core
         {
             if (isValid) // 在可用状态
             {
+                beg = cnt == 0 ? end : end + 1;        // 初始状态为0
+                end = line.find_first_of(puncts, beg); // 分隔符位置
                 cnt++;
-                std::string field; // 拷贝
-                prevpos = currpos;
-                while (currpos != line.end() && puncts.find(*currpos) == std::string::npos) // 还没到标点位置
+                if (end == std::string::npos) // 已到达末尾
                 {
-                    field.push_back(*currpos); // 拷贝本字段
-                    currpos++;
+                    isValid = false;
+                    return line.substr(beg); // 最后一个
                 }
-                if (currpos == line.end())
-                {
-                    isValid = false; // 到达结尾则状态设为无效
-                    return field;
-                }
-                currpos++; // 跳过逗号
-                return field;
+                return line.substr(beg, Size()); // 返回字段
             }
             return std::string{};
         }
         /**
+         * @brief 当前处理了多少个字段
+         *
+         * @return size_t
+         */
+        size_t Count()
+        {
+            return cnt;
+        }
+        /**
          * @brief 在引用的外部容器改变时重置当前状态
+         *
+         * @param relocate 需要重定位的位置
          *
          * @warning 一旦外部容器发生改变，必须调用此成员，否则可能导致未定义行为
          */
-        void Reset()
+        void Reset(size_t relocate = 0ULL)
         {
-            isValid = true;
-            prevpos = currpos = line.begin();
-            size_t prev = cnt;
-            for (size_t i = 0; i < prev; i++)
-            {
-                NextField();
-            }
+            this->isValid = true;
+            this->beg = 0;
+            this->end = 0;
+            this->cnt = 0;
+            Ignore(relocate);
         }
         /**
          * @brief 跳过n个字段
@@ -107,31 +116,22 @@ namespace core
             }
         }
         /**
-         * @brief 返回当前字段的开始位置，初始值为0
+         * @brief 返回当前字段的开始位置
          *
          * @return size_t
          */
-        size_t CurrPos() const
+        size_t Begin() const
         {
-            return std::distance(line.begin(), prevpos);
-        }
-        /**
-         * @brief 返回下一个字段的开始位置，初始值为0
-         *
-         * @return size_t
-         */
-        size_t NextPos() const
-        {
-            return std::distance(line.begin(), currpos);
+            return beg;
         }
         /**
          * @brief 返回当前字段的长度，初始值为0
          *
          * @return size_t
          */
-        size_t CurrSize() const
+        size_t Size() const
         {
-            return std::distance(prevpos, currpos) - 1;
+            return end - beg;
         }
         /**
          * @brief 类型转换重载运算符，表示该解析器是否有效
@@ -202,7 +202,7 @@ namespace core
      * @note 为了简洁这里使用了模板参数，实际传参须指定为字符串向量类型的开区间和输出位置
      */
     template <typename It, typename Inserter>
-    inline void ProcessSection(const It beg, const It end, Inserter dist, double speed)
+    inline void ProcessSection(const It beg, const It end, Inserter dist, long double speed)
     {
         std::string sec = *beg;
         if (beg == end)
@@ -220,18 +220,29 @@ namespace core
                 *dist = str;
                 continue;
             }
-            // 谱面元数据
+            // 谱面基本信息
             if (sec.find("[General]") != std::string::npos)
             {
                 // 只处理预览时间字段，因为该章节有关字段仅此一个，即PreviewTime:...
                 if (str.find("PreviewTime") != std::string::npos)
                 {
-                    // timepos + 1是为了跳过冒号
                     cl.Ignore(1);
                     uint32_t msec = std::stoul(cl.NextField()); // 毫秒坐标
-                    auto start = cl.CurrPos();
                     msec = static_cast<uint32_t>(msec / speed); // osu要求该字段必须为整型
-                    str.replace(start, cl.CurrSize(), std::to_string(msec));
+                    str.replace(cl.Begin(), cl.Size(), " " + std::to_string(msec));
+                }
+                *dist = str; // 其他字段原样返回
+            }
+            // 元数据
+            else if (sec.find("[Metadata]") != std::string::npos)
+            {
+                if (str.find("Version") != std::string::npos)
+                {
+                    if (str.back() == '\r')
+                    {
+                        str.erase(str.end() - 1);
+                    }
+                    str.append(fmt::format(" {}x\r", speed)); // 在游戏中更好分辨倍速
                 }
                 *dist = str; // 其他字段原样返回
             }
@@ -243,10 +254,9 @@ namespace core
                 // 视频，第二个字段为时间
                 if (front == "1" || front == "Video")
                 {
-                    auto start = cl.CurrPos();
                     uint32_t msec = std::stoul(cl.NextField());
                     msec = static_cast<uint32_t>(msec / speed);
-                    str.replace(start, cl.CurrSize(), std::to_string(msec)); // 不包含逗号
+                    str.replace(cl.Begin(), cl.Size(), std::to_string(msec)); // 不包含逗号
                 }
                 // 休息段，一个开始时间，一个结束时间
                 else if (front == "2" || front == "Break")
@@ -254,10 +264,9 @@ namespace core
                     // 直接处理两次即可
                     for (int i = 0; i < 2; i++)
                     {
-                        auto start = cl.CurrPos();
                         uint32_t msec = std::stoul(cl.NextField());
                         msec = static_cast<uint32_t>(msec / speed);
-                        str.replace(start, cl.CurrSize() - start, std::to_string(msec));
+                        str.replace(cl.Begin(), cl.Size(), std::to_string(msec));
                     }
                     // 其他不含时间，故不处理
                     // 暂不支持故事板处理
@@ -268,13 +277,12 @@ namespace core
             else if (sec.find("[TimingPoints]") != std::string::npos)
             {
                 // 先处理时间点，官方要求为小数
-                size_t start = cl.CurrPos();
-                double time = std::stod(cl.NextField()) / speed;
-                str.replace(start, cl.CurrSize(), std::to_string(time));
-                cl.Reset();
+                long double time = std::stold(cl.NextField()) / speed;
+                auto cnt = cl.Count();
+                str.replace(cl.Begin(), cl.Size(), fmt::format("{}", time));
+                cl.Reset(cnt);
                 // 再处理拍长，同为小数
-                double beatLen = std::stod(cl.NextField());
-                start = cl.CurrPos();
+                long double beatLen = std::stold(cl.NextField());
                 if (beatLen < 0)
                 {
                     // 为负数则表示继承点滑条速度，按照定义应乘以倍速
@@ -285,8 +293,7 @@ namespace core
                     // 为正数则表示非继承点拍长，按倍速缩放
                     beatLen /= speed;
                 }
-                auto s = cl.CurrSize();
-                str.replace(start, cl.CurrSize(), std::to_string(beatLen));
+                str.replace(cl.Begin(), cl.Size(), fmt::format("{}", beatLen));
                 *dist = str;
             }
             // 物件
@@ -296,10 +303,10 @@ namespace core
                 cl.Ignore(2);
                 // 该字段为整型
                 uint32_t t = std::stoul(cl.NextField());
-                size_t start = cl.CurrPos();
                 t = static_cast<uint32_t>(t / speed);
-                str.replace(start, cl.CurrSize(), std::to_string(t));
-                cl.Reset();
+                auto cnt = cl.Count();
+                str.replace(cl.Begin(), cl.Size(), std::to_string(t));
+                cl.Reset(cnt);
                 // 获取该物件的类型
                 uint8_t type = std::stoi(cl.NextField());
                 // 如果为std滑条，则第2位为1
@@ -320,8 +327,7 @@ namespace core
                 }
                 // 根据官方要求，这一位是整型
                 uint32_t len = static_cast<uint32_t>(std::stoul(cl.NextField()) / speed);
-                start = cl.CurrPos();
-                str.replace(start, cl.CurrSize(), std::to_string(len));
+                str.replace(cl.Begin(), cl.Size(), std::to_string(len));
                 *dist = str;
             }
             else
@@ -339,7 +345,7 @@ namespace core
      * @return std::vector<std::string> 返回处理后的文件向量
      * @throw 当文件头不是官方指定或空文件时抛出
      */
-    inline std::vector<std::string> ProcessChartFile(const fs::path &filename, const std::vector<std::string> &lines, double speed)
+    inline std::vector<std::string> ProcessChartFile(const fs::path &filename, const std::vector<std::string> &lines, long double speed)
     {
         std::vector<std::string> processed;
         if (lines.empty() || lines.front().find("osu file format") == std::string::npos)
@@ -372,7 +378,7 @@ namespace core
         return processed;
     }
     /**
-     * @brief 将处理好的文件输出到newdir，如果不存在则自动创建
+     * @brief 将处理好的文件导出到newdir，如果不存在则自动创建
      *
      * @param newdir 新目录名称
      * @param name 文件名
@@ -384,7 +390,7 @@ namespace core
         std::ofstream ofs(newdir / name.filename());
         for (auto &line : content)
         {
-            ofs << line << '\n';
+            ofs << line << '\r';
         }
     }
 }
