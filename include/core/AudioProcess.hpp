@@ -1,3 +1,19 @@
+/**
+ * @file AudioProcess.hpp
+ * @author hPrevInstance
+ * @brief 音频倍速参数处理模块
+ *
+ * 该模块提供了用于精确处理有理数倍速的函数，同时实现了较低的资源占用和较高的速度，
+ * 还包含一个构造ffmpeg参数的处理函数，用于生成倍速处理的滤镜链。
+ *
+ * @version 1.0.0
+ * @date 2026-08-03
+ * @ingroup core
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #pragma once
 
 #ifndef FMT_HEADER_ONLY
@@ -12,6 +28,10 @@
 #include <algorithm>
 #include <fmt/format.h>
 
+/**
+ * @defgroup core 倍速参数处理模块
+ * @brief 用于倍速处理
+ */
 namespace core
 {
     /**
@@ -147,16 +167,16 @@ namespace core
     inline constexpr Option PITCH = 0b10;
 
     /**
-     * @brief 构建ffmpeg的变速变调参数
+     * @brief 生成ffmpeg的变速变调参数
      *
      * @param tempo 变速速度
      * @param pitch 变调速度
      * @param sampleRate ffprobe返回的变调采样率
      * @param opt 选择是变速还是变调，或两者都是
-     * @return std::string 构建完成的参数
+     * @return std::string 生成的参数
      * @throw std::invalid_argument 采样率小于等于0时
      */
-    inline std::string BuildCommand(const std::string &tempo, const std::string &pitch, int sampleRate, Option opt)
+    inline std::string GenerateFfmpegCommand(const std::string &tempo, const std::string &pitch, int sampleRate, Option opt)
     {
         if (sampleRate <= 0)
         {

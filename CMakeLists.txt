@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(SpeedConverter VERSION 1.0.0)
+project(OSUspeeder VERSION 1.0.0)
 set(QT_NO_DEPLOYMENT_TOOL TRUE) 
 
 set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
@@ -20,9 +20,10 @@ include_directories(include)
 
 add_executable(${PROJECT_NAME} 
     app/main.cpp
-    include/core/FileOperation.h
-    include/core/AudioProcess.h
-    include/gui/MainWindow.h
+    include/core/FileOperation.hpp
+    include/core/AudioProcess.hpp
+    include/gui/MainWindow.hpp
+    include/CLI/CLI11.hpp
 )
 
 target_compile_options(${PROJECT_NAME} 
@@ -44,8 +45,9 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 #target_link_options(${PROJECT_NAME} PRIVATE -mwindows)
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "spdconv")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "osp")
 
 # 添加调试信息，并关闭优化，方便调试
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set(CMAKE_BUILD_TYPE Debug)
+ 

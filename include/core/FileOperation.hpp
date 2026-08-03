@@ -1,12 +1,10 @@
 /**
- * @file    FileOperation.h
+ * @file    FileOperation.hpp
  * @brief   osu谱面文件解析与倍速调整核心模块
  *
  * 该模块提供了完整的 osu谱面文件读写、解析和倍速缩放功能。
  * 支持处理General\Events\TimingPoints\HitObjects章节中的时间相关字段，
  * 并包含一个通用的分隔字段解析器。
- *
- * 所有函数均为纯 C++17 实现，不依赖 Qt，可独立复用于命令行工具或其他 GUI 程序。
  *
  * @author  hPrevInstance
  * @date    2026-07-30
@@ -14,6 +12,7 @@
  * @ingroup core
  *
  * @see     https://osu.ppy.sh/wiki/zh/Client/File_formats/osu_(file_format) 中文官方谱面格式文档
+ * @copyright Copyright (c) 2026
  */
 
 #pragma once
@@ -150,7 +149,7 @@ namespace core
      * @return true 是
      * @return false 否
      */
-    bool EndsWithNewline(const std::string &s)
+    inline bool EndsWithNewline(const std::string &s)
     {
         if (s.empty())
         {
@@ -196,7 +195,7 @@ namespace core
      * @return std::vector<std::string> 分割为字符串向量的osu文件
      * @throw std::invaild_argument 当不是osu文件或打开失败时抛出
      */
-    inline std::vector<std::string> LoadChartFile(const fs::path &filename)
+    inline std::vector<std::string> LoadBeatmapFile(const fs::path &filename)
     {
         if (filename.extension() != ".osu")
         {
