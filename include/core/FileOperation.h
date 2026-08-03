@@ -18,6 +18,10 @@
 
 #pragma once
 
+#ifndef FMT_HEADER_ONLY
+#define FMT_HEADER_ONLY
+#endif
+
 #include <fstream>
 #include <string>
 #include <vector>
@@ -26,10 +30,6 @@
 #include <iterator>
 #include <algorithm>
 #include <fmt/format.h>
-
-#ifndef FMT_HEADER_ONLY
-#define FMT_HEADER_ONLY
-#endif
 
 /**
  * @defgroup core 核心算法模块
@@ -144,19 +144,45 @@ namespace core
         }
     };
     /**
+     * @brief 判断一个字符串是否以换行符结尾
+     *
+     * @param s 字符串
+     * @return true 是
+     * @return false 否
+     */
+    bool EndsWithNewline(const std::string &s)
+    {
+        if (s.empty())
+        {
+            return false;
+        }
+        // 检查常见的换行符序列
+        if (s.back() == '\n')
+        {
+            // 如果末尾是 \n，再检查它前面是否是 \r
+            if (s.size() >= 2 && s[s.size() - 2] == '\r')
+            {
+                return true; // 匹配 \r\n
+            }
+            return true; // 匹配 \n
+        }
+        return false;
+    }
+    /**
      * @brief 解析歌曲所在的目录下特定扩展的文件
      *
      * @param p 目录
      * @param ext 需要获取的扩展名，需要加上点，如.osu .mp3等
      * @return std::vector<fs::path> 目录中所有符合ext扩展名的路径
      */
-    inline std::vector<fs::path> AnalysisDirectory(const fs::path &p, const std::string &ext)
+    inline std::vector<fs::path> AnalysisDirectory(const fs::path &p, const std::vector<std::string> &ext)
     {
         std::vector<fs::path> paths;
         // 应用目录迭代器
         for (const auto &entry : fs::directory_iterator(p))
         {
-            if (entry.path().extension() == ext)
+            if (std::any_of(ext.begin(), ext.end(), [&entry](const std::string &s)
+                            { return entry.path().extension() == s; }))
             {
                 paths.emplace_back(entry.path());
             }
@@ -174,12 +200,12 @@ namespace core
     {
         if (filename.extension() != ".osu")
         {
-            throw std::invalid_argument("参数不是osu谱面文件：" + filename.string());
+            throw std::invalid_argument("参数错误：参数不是osu谱面文件：" + filename.string());
         }
         std::ifstream ifs(filename);
         if (!ifs)
         {
-            throw std::invalid_argument("无法打开文件：" + filename.string());
+            throw std::runtime_error("系统错误：无法打开文件：" + filename.string());
         }
         std::vector<std::string> lines;
         std::string line;
@@ -198,11 +224,12 @@ namespace core
      * @param end 结束位置
      * @param dist 处理结果的输出位置
      * @param speed 倍速
+     * @param name 当前处理文件名，用于异常处理
      *
      * @note 为了简洁这里使用了模板参数，实际传参须指定为字符串向量类型的开区间和输出位置
      */
     template <typename It, typename Inserter>
-    inline void ProcessSection(const It beg, const It end, Inserter dist, long double speed)
+    inline void ProcessSection(const It beg, const It end, Inserter dist, long double speed, const fs::path &name)
     {
         std::string sec = *beg;
         if (beg == end)
@@ -210,129 +237,138 @@ namespace core
             return;
         }
         *dist = sec; // 存入章节名
+        size_t row = 0;
         for (auto b = beg + 1; b != end; ++b)
         {
+            row++;
             std::string str = *b;
             PunctLexer cl(str, ",:");
-            // 忽略换行符
-            if (str.empty() || !cl || str == "\r" || str == "\n")
+            try
             {
-                *dist = str;
-                continue;
-            }
-            // 谱面基本信息
-            if (sec.find("[General]") != std::string::npos)
-            {
-                // 只处理预览时间字段，因为该章节有关字段仅此一个，即PreviewTime:...
-                if (str.find("PreviewTime") != std::string::npos)
-                {
-                    cl.Ignore(1);
-                    uint32_t msec = std::stoul(cl.NextField()); // 毫秒坐标
-                    msec = static_cast<uint32_t>(msec / speed); // osu要求该字段必须为整型
-                    str.replace(cl.Begin(), cl.Size(), " " + std::to_string(msec));
-                }
-                *dist = str; // 其他字段原样返回
-            }
-            // 元数据
-            else if (sec.find("[Metadata]") != std::string::npos)
-            {
-                if (str.find("Version") != std::string::npos)
-                {
-                    if (str.back() == '\r')
-                    {
-                        str.erase(str.end() - 1);
-                    }
-                    str.append(fmt::format(" {}x\r", speed)); // 在游戏中更好分辨倍速
-                }
-                *dist = str; // 其他字段原样返回
-            }
-            // 事件
-            else if (sec.find("[Events]") != std::string::npos)
-            {
-                cl.Ignore(1); // 跳过第一个
-                std::string front = cl.NextField();
-                // 视频，第二个字段为时间
-                if (front == "1" || front == "Video")
-                {
-                    uint32_t msec = std::stoul(cl.NextField());
-                    msec = static_cast<uint32_t>(msec / speed);
-                    str.replace(cl.Begin(), cl.Size(), std::to_string(msec)); // 不包含逗号
-                }
-                // 休息段，一个开始时间，一个结束时间
-                else if (front == "2" || front == "Break")
-                {
-                    // 直接处理两次即可
-                    for (int i = 0; i < 2; i++)
-                    {
-                        uint32_t msec = std::stoul(cl.NextField());
-                        msec = static_cast<uint32_t>(msec / speed);
-                        str.replace(cl.Begin(), cl.Size(), std::to_string(msec));
-                    }
-                    // 其他不含时间，故不处理
-                    // 暂不支持故事板处理
-                }
-                *dist = str;
-            }
-            // 时间点
-            else if (sec.find("[TimingPoints]") != std::string::npos)
-            {
-                // 先处理时间点，官方要求为小数
-                long double time = std::stold(cl.NextField()) / speed;
-                auto cnt = cl.Count();
-                str.replace(cl.Begin(), cl.Size(), fmt::format("{}", time));
-                cl.Reset(cnt);
-                // 再处理拍长，同为小数
-                long double beatLen = std::stold(cl.NextField());
-                if (beatLen < 0)
-                {
-                    // 为负数则表示继承点滑条速度，按照定义应乘以倍速
-                    beatLen *= speed;
-                }
-                else
-                {
-                    // 为正数则表示非继承点拍长，按倍速缩放
-                    beatLen /= speed;
-                }
-                str.replace(cl.Begin(), cl.Size(), fmt::format("{}", beatLen));
-                *dist = str;
-            }
-            // 物件
-            else if (sec.find("[HitObjects]") != std::string::npos)
-            {
-                // 跳过x, y字段
-                cl.Ignore(2);
-                // 该字段为整型
-                uint32_t t = std::stoul(cl.NextField());
-                t = static_cast<uint32_t>(t / speed);
-                auto cnt = cl.Count();
-                str.replace(cl.Begin(), cl.Size(), std::to_string(t));
-                cl.Reset(cnt);
-                // 获取该物件的类型
-                uint8_t type = std::stoi(cl.NextField());
-                // 如果为std滑条，则第2位为1
-                if (type & (1 << 1))
-                {
-                    cl.Ignore(3); // 向后跳3位是长度
-                }
-                // 如果是mania长条或转盘，则4或8位为1
-                else if (type & (1 << 7) || type & (1 << 3))
-                {
-                    cl.Ignore(1); // 向后跳1位是长度
-                }
-                // 普通物件
-                else if (type & 1)
+                // 忽略换行符
+                if (str.empty() || !cl || EndsWithNewline(str))
                 {
                     *dist = str;
                     continue;
                 }
-                // 根据官方要求，这一位是整型
-                uint32_t len = static_cast<uint32_t>(std::stoul(cl.NextField()) / speed);
-                str.replace(cl.Begin(), cl.Size(), std::to_string(len));
-                *dist = str;
+                // 谱面基本信息
+                if (sec.find("[General]") != std::string::npos)
+                {
+                    // 只处理预览时间字段，因为该章节有关字段仅此一个，即PreviewTime:...
+                    if (str.find("PreviewTime") != std::string::npos)
+                    {
+                        cl.Ignore(1);
+                        uint32_t msec = std::stoul(cl.NextField()); // 毫秒坐标
+                        msec = static_cast<uint32_t>(msec / speed); // osu要求该字段必须为整型
+                        str.replace(cl.Begin(), cl.Size(), " " + fmt::format("{}", msec));
+                    }
+                    *dist = str; // 其他字段原样返回
+                }
+                // 元数据
+                else if (sec.find("[Metadata]") != std::string::npos)
+                {
+                    if (str.find("Version") != std::string::npos)
+                    {
+                        if (EndsWithNewline(str))
+                        {
+                            str.erase(str.end() - 1);
+                        }
+                        str.append(fmt::format(" {:.10g}x\n", speed)); // 在游戏中更好分辨倍速
+                    }
+                    *dist = str; // 其他字段原样返回
+                }
+                // 事件
+                else if (sec.find("[Events]") != std::string::npos)
+                {
+                    cl.Ignore(1); // 跳过第一个
+                    std::string front = cl.NextField();
+                    // 视频，第二个字段为时间
+                    if (front == "1" || front == "Video")
+                    {
+                        uint32_t msec = std::stoul(cl.NextField());
+                        msec = static_cast<uint32_t>(msec / speed);
+                        str.replace(cl.Begin(), cl.Size(), fmt::format("{}", msec)); // 不包含逗号
+                    }
+                    // 休息段，一个开始时间，一个结束时间
+                    else if (front == "2" || front == "Break")
+                    {
+                        // 直接处理两次即可
+                        for (int i = 0; i < 2; i++)
+                        {
+                            uint32_t msec = std::stoul(cl.NextField());
+                            msec = static_cast<uint32_t>(msec / speed);
+                            str.replace(cl.Begin(), cl.Size(), fmt::format("{}", msec));
+                        }
+                        // 其他不含时间，故不处理
+                        // 暂不支持故事板处理
+                    }
+                    *dist = str;
+                }
+                // 时间点
+                else if (sec.find("[TimingPoints]") != std::string::npos)
+                {
+                    // 先处理时间点，官方要求为小数
+                    long double time = std::stold(cl.NextField()) / speed;
+                    auto cnt = cl.Count();
+                    str.replace(cl.Begin(), cl.Size(), fmt::format("{:.10g}", time));
+                    cl.Reset(cnt);
+                    // 再处理拍长，同为小数
+                    long double beatLen = std::stold(cl.NextField());
+                    if (beatLen < 0)
+                    {
+                        // 为负数则表示继承点滑条速度，按照定义应乘以倍速
+                        beatLen *= speed;
+                    }
+                    else
+                    {
+                        // 为正数则表示非继承点拍长，按倍速缩放
+                        beatLen /= speed;
+                    }
+                    str.replace(cl.Begin(), cl.Size(), fmt::format("{:.10g}", beatLen));
+                    *dist = str;
+                }
+                // 物件
+                else if (sec.find("[HitObjects]") != std::string::npos)
+                {
+                    // 跳过x, y字段
+                    cl.Ignore(2);
+                    // 该字段为整型
+                    uint32_t t = std::stoul(cl.NextField());
+                    t = static_cast<uint32_t>(t / speed);
+                    auto cnt = cl.Count();
+                    str.replace(cl.Begin(), cl.Size(), fmt::format("{}", t));
+                    cl.Reset(cnt);
+                    // 获取该物件的类型
+                    uint8_t type = std::stoi(cl.NextField());
+                    // 如果为std滑条，则第2位为1
+                    if (type & (1 << 1))
+                    {
+                        cl.Ignore(3); // 向后跳3位是长度
+                    }
+                    // 如果是mania长条或转盘，则4或8位为1
+                    else if (type & (1 << 7) || type & (1 << 3))
+                    {
+                        cl.Ignore(1); // 向后跳1位是长度
+                    }
+                    // 普通物件
+                    else if (type & 1)
+                    {
+                        *dist = str;
+                        continue;
+                    }
+                    // 根据官方要求，这一位是整型
+                    uint32_t len = static_cast<uint32_t>(std::stoul(cl.NextField()) / speed);
+                    str.replace(cl.Begin(), cl.Size(), fmt::format("{}", len));
+                    *dist = str;
+                }
+                else
+                {
+                    *dist = str;
+                }
             }
-            else
+            catch (const std::exception &e)
             {
-                *dist = str;
+                throw std::invalid_argument(fmt::format("格式错误：文件{} 章节{} {}行：{}\n", name.filename().string(), sec, row, e.what()));
             }
         }
     }
@@ -350,13 +386,13 @@ namespace core
         std::vector<std::string> processed;
         if (lines.empty() || lines.front().find("osu file format") == std::string::npos)
         {
-            throw std::invalid_argument("该osu谱面文件无效：" + filename.string());
+            throw std::invalid_argument(fmt::format("格式错误：该osu谱面文件无效：{}\n", filename.string()));
         }
         processed.reserve(lines.size());       // 预分配内存
         processed.emplace_back(lines.front()); // osu文件头
         processed.emplace_back("\r");
 
-        // 寻找章节名的lambda([...])，为简洁不使用正则表达式
+        // 寻找章节[...]的lambda，为简洁不使用正则表达式
         auto findSec = [](const std::string &s)
         { return !s.empty() && s.find('[') != std::string::npos && s.find(']') != std::string::npos; };
 
@@ -366,7 +402,7 @@ namespace core
 
         while (secBeg != lines.end())
         {
-            ProcessSection(secBeg, secEnd, inserter, speed);
+            ProcessSection(secBeg, secEnd, inserter, speed, filename);
             if (secEnd == lines.end())
             {
                 break;
