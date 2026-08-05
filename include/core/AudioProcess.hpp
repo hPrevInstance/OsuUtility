@@ -176,7 +176,7 @@ namespace core
      * @return std::string 生成的参数
      * @throw std::invalid_argument 采样率小于等于0时
      */
-    inline std::string GenerateFfmpegCommand(const std::string &tempo, const std::string &pitch, int sampleRate, Option opt)
+    inline std::string GenerateFilterChain(const std::string &tempo, const std::string &pitch, int sampleRate, Option opt)
     {
         if (sampleRate <= 0)
         {

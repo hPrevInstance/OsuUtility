@@ -167,27 +167,7 @@ namespace core
         }
         return false;
     }
-    /**
-     * @brief 解析歌曲所在的目录下特定扩展的文件
-     *
-     * @param p 目录
-     * @param ext 需要获取的扩展名，需要加上点，如.osu .mp3等
-     * @return std::vector<fs::path> 目录中所有符合ext扩展名的路径
-     */
-    inline std::vector<fs::path> AnalysisDirectory(const fs::path &p, const std::vector<std::string> &ext)
-    {
-        std::vector<fs::path> paths;
-        // 应用目录迭代器
-        for (const auto &entry : fs::directory_iterator(p))
-        {
-            if (std::any_of(ext.begin(), ext.end(), [&entry](const std::string &s)
-                            { return entry.path().extension() == s; }))
-            {
-                paths.emplace_back(entry.path());
-            }
-        }
-        return paths;
-    }
+
     /**
      * @brief 加载指定的osu谱面文件
      *
@@ -380,7 +360,7 @@ namespace core
      * @return std::vector<std::string> 返回处理后的文件向量
      * @throw 当文件头不是官方指定或空文件时抛出
      */
-    inline std::vector<std::string> ProcessChartFile(const fs::path &filename, const std::vector<std::string> &lines, long double speed)
+    inline std::vector<std::string> ProcessBeatmap(const fs::path &filename, const std::vector<std::string> &lines, long double speed)
     {
         std::vector<std::string> processed;
         if (lines.empty() || lines.front().find("osu file format") == std::string::npos)
@@ -419,7 +399,7 @@ namespace core
      * @param name 文件名
      * @param content 已处理的文件内容
      */
-    inline void ExportFiles(const fs::path &newdir, const fs::path &name, const std::vector<std::string> &content)
+    inline void ExportFile(const fs::path &newdir, const fs::path &name, const std::vector<std::string> &content)
     {
         fs::create_directories(newdir);
         std::ofstream ofs(newdir / name.filename());

@@ -1,53 +1,67 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(OSUspeeder VERSION 1.0.0)
-set(QT_NO_DEPLOYMENT_TOOL TRUE) 
 
+# ===== 1. 编译器与标准 =====
 set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
-set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
-
+set(CMAKE_C_COMPILER   x86_64-w64-mingw32-gcc)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_PREFIX_PATH "/mnt/d/Qt/6.11.1/mingw_64") 
-
+# ===== 2. Qt 环境 =====
+set(CMAKE_PREFIX_PATH "/mnt/d/Qt/6.11.1/mingw_64")
+set(QT_NO_DEPLOYMENT_TOOL TRUE)
+set(QT_DEPLOY_SUPPORT OFF) 
 set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
 set(CMAKE_DISABLE_FIND_PACKAGE_Vulkan TRUE)
-
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
-include_directories(include)
+# ===== 3. 自动处理 Qt 的 Q_OBJECT 宏 =====
+set(CMAKE_AUTOMOC ON)   # 自动运行 moc，生成元对象代码
 
-add_executable(${PROJECT_NAME} 
-    app/main.cpp
-    include/core/FileOperation.hpp
-    include/core/AudioProcess.hpp
-    include/gui/MainWindow.hpp
-    include/CLI/CLI11.hpp
+# ===== 4. 头文件搜索路径 =====
+include_directories(include)   # 所有 #include 都从 include/ 开始搜索
+
+# ===== 5. 主要可执行文件 =====
+add_executable(${PROJECT_NAME}
+    app/main.cpp                # 唯一需要编译的源文件
 )
 
-target_compile_options(${PROJECT_NAME} 
-    PRIVATE
-    -O3
-    -ffunction-sections
-    -fdata-sections)
+# ===== 6. 编译定义（宏） =====
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    FMT_HEADER_ONLY             # fmt 库要求
+)
 
-target_link_options(${PROJECT_NAME}
-    PRIVATE
-    "LINKER:--gc-sections"
-    )
+# ===== 7. 编译选项（按构建类型区分） =====
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Release>:-O3 -ffunction-sections -fdata-sections>
+    $<$<CONFIG:Debug>:-g -O0>
+    -finput-charset=UTF-8
+    -fexec-charset=UTF-8
+)
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE FMT_HEADER_ONLY)
+# ===== 8. 链接选项 =====
+target_link_options(${PROJECT_NAME} PRIVATE
+    "LINKER:--gc-sections"      # 减少无用代码，优化体积
+)
 
-target_link_libraries(${PROJECT_NAME} 
-    Qt6::Core 
+# ===== 9. 链接 Qt 库 =====
+target_link_libraries(${PROJECT_NAME}
+    Qt6::Core
     Qt6::Widgets
 )
 
-#target_link_options(${PROJECT_NAME} PRIVATE -mwindows)
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "osp")
+# ===== 10. 输出文件名 =====
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    OUTPUT_NAME "osp"           # 生成 osp.exe 
+    DEBUG_OUTPUT_NAME "osp_d"   # Debug 模式下生成 osp_d.exe
+)
 
-# 添加调试信息，并关闭优化，方便调试
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
-set(CMAKE_BUILD_TYPE Debug)
- 
+# ===== 11. (可选) 隐藏控制台窗口 =====
+# 如果将来需要纯 GUI 模式，取消下面注释（但会丢失 std::cout 输出）
+# target_link_options(${PROJECT_NAME} PRIVATE -mwindows)
+
+# ===== 12. (可选) 设置默认构建类型 =====
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
