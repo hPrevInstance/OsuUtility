@@ -26,6 +26,7 @@ include_directories(include)   # 所有 #include 都从 include/ 开始搜索
 add_executable(${PROJECT_NAME}
     app/main.cpp                # 唯一需要编译的源文件
 )
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 # ===== 6. 编译定义（宏） =====
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -53,6 +54,7 @@ target_link_libraries(${PROJECT_NAME}
 
 # ===== 10. 输出文件名 =====
 set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
     OUTPUT_NAME "osp"           # 生成 osp.exe 
     DEBUG_OUTPUT_NAME "osp_d"   # Debug 模式下生成 osp_d.exe
 )
@@ -63,5 +65,5 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # ===== 12. (可选) 设置默认构建类型 =====
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif()

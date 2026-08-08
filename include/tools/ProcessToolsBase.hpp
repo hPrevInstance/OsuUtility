@@ -13,6 +13,13 @@
 namespace tools
 {
 
+    std::string trim(const std::string &s)
+    {
+        auto start = s.find_first_not_of(" \t\n\r\f\v\"");
+        auto end = s.find_last_not_of(" \t\n\r\f\v\"");
+        return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+    }
+
     /**
      * @brief  存放歌曲元数据
      *
@@ -28,13 +35,13 @@ namespace tools
     class BeatmapTaskBase
     {
     protected:
-        core::fs::path beatmap_, song_;  // 谱面和歌曲路径
-        std::string tempo_, pitch_;      // 变速变调
-        inline static core::Option opt_; // 选项
+        core::fs::path beatmap_, song_, picture_; // 谱面、歌曲路径、背景图
+        std::string tempo_, pitch_;               // 变速变调
+        core::Option opt_ = 0;                    // 选项
         std::vector<std::string> lines_;
 
-        virtual bool FetchAudioInfo(std::string *errorMsg = nullptr);
-        virtual bool ProcessAudio(const core::fs::path &newdir, std::string *errorMsg = nullptr) const;
+        virtual bool FetchAudioInfo(std::string *errorMsg);
+        virtual bool ProcessAudio(const core::fs::path &newdir, std::string *errorMsg) const;
 
     private:
         int sampleRate_;
@@ -48,25 +55,11 @@ namespace tools
         BeatmapTaskBase(const core::fs::path &bmp) : beatmap_(bmp)
         {
             lines_ = core::LoadBeatmapFile(beatmap_);
-
-            // 寻找音频文件
-            auto it = std::find_if(lines_.begin(), lines_.end(), [](const std::string &str)
-                                   { return str.find("AudioFilename") != std::string::npos; });
-            if (it != lines_.end())
-            {
-                auto pos = it->find(':');
-                core::fs::path song(it->substr(pos + 1));
-                song_ = beatmap_.parent_path() / song;
-            }
-            else
-            {
-                throw std::invalid_argument("格式错误：该谱面中找不到歌曲文件：" + beatmap_.filename().string());
-            }
         }
         BeatmapTaskBase(const BeatmapTaskBase &) = default;
         BeatmapTaskBase(BeatmapTaskBase &&) = default;
 
-        static void SetMode(core::Option opt)
+        void SetMode(core::Option opt)
         {
             opt_ = opt;
         }
@@ -89,15 +82,36 @@ namespace tools
      */
     void BeatmapTaskBase::Parse(const core::fs::path &newdir)
     {
+        // 为新文件加上倍速，方便区分
+        auto [num, denom] = core::ParseFraction(tempo_.empty() ? pitch_ : tempo_);
+        std::vector<std::pair<std::string, std::string>> exinfo;
+        lines_ = core::ProcessBeatmap(beatmap_, lines_, exinfo, static_cast<long double>(num) / denom);
+
+        if (exinfo.empty())
+        {
+            throw std::invalid_argument("错误：音频或图片信息缺失 文件：" + beatmap_.string());
+        }
+
+        // 获取音乐和背景信息
+        for (const auto &[type, info] : exinfo)
+        {
+            if (type == "bg")
+            {
+                picture_ = info;
+                picture_ = beatmap_.parent_path() / trim(picture_.string());
+            }
+            else if (type == "af")
+            {
+                song_ = info;
+                song_ = beatmap_.parent_path() / trim(song_.string());
+            }
+        }
+
         std::string err;
         if (!FetchAudioInfo(&err))
         {
             throw std::runtime_error("错误：获取音频信息失败：" + err);
         }
-
-        // 为新文件加上倍速，方便区分
-        auto [num, denom] = core::ParseFraction(tempo_);
-        lines_ = core::ProcessBeatmap(beatmap_, lines_, static_cast<long double>(num) / denom);
 
         auto out = beatmap_.stem();
         out.concat(fmt::format("({:.6g})", static_cast<long double>(num) / denom));
@@ -109,6 +123,8 @@ namespace tools
         {
             throw std::runtime_error("错误：音频处理失败：" + err);
         }
+        auto dest = newdir / picture_.filename();
+        core::fs::copy(picture_, dest, core::fs::copy_options::skip_existing);
     }
 
     bool BeatmapTaskBase::FetchAudioInfo(std::string *errorMsg = nullptr)
@@ -126,7 +142,7 @@ namespace tools
 
         auto command = fmt::format(
             "{} -v error -select_streams a:0 -show_entries stream=sample_rate -of default=noprint_wrappers=1:nokey=1 \"{}\"",
-            ffprobe, song_);
+            ffprobe, song_.string());
         char buffer[BUFSIZ]{};
         std::string res;
 
@@ -170,7 +186,7 @@ namespace tools
         {
             if (errorMsg != nullptr)
             {
-                *errorMsg = fmt::format("ffprobe返回的采样率无效：{} 当前文件：{}", res, song_);
+                *errorMsg = fmt::format("ffprobe返回的采样率无效：{} 当前文件：{}", res, song_.string());
             }
             return false;
         }
@@ -200,12 +216,7 @@ namespace tools
             // 构造滤镜链
             auto command = core::GenerateFilterChain(tempo_, pitch_, sampleRate_, opt_);
 
-            auto [num, denom] = core::ParseFraction(tempo_);
-            auto out = song_.stem();
-            out.concat(fmt::format("({:.6g})", static_cast<long double>(num) / denom));
-            out.concat(song_.extension().string());
-
-            command = fmt::format("{} -i \"{}\" {} -y \"{}\"", ffmpeg, song_, command, newdir / out);
+            command = fmt::format("{} -i \"{}\" {} -loglevel error -y \"{}\"", ffmpeg, song_.string(), command, (newdir / song_.filename()).string());
 
             int ret = std::system(command.c_str());
             if (ret != 0)
@@ -226,12 +237,5 @@ namespace tools
             }
         }
         return true;
-    }
-
-    std::string trim(const std::string &s)
-    {
-        auto start = s.find_first_not_of(" \t\n\r\f\v");
-        auto end = s.find_last_not_of(" \t\n\r\f\v");
-        return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
     }
 }

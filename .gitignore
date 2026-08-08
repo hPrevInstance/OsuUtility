@@ -6,5 +6,5 @@ build/
 .vscode/
 *.user
 *.dll
-*.osu
+bin/
 compile_commands.json
