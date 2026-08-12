@@ -186,7 +186,7 @@ namespace core
         {
             std::string ret("-af \"");
             auto [num, denom] = ParseFraction(pitch);
-            ret.append(fmt::format("asetrate={},", std::llround((long double)num / denom * sampleRate)));
+            ret.append(fmt::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
             auto DivFrac = [](const std::string &a, const std::string &b) -> std::string
             {
                 auto f1 = ParseFraction(a), f2 = ParseFraction(b);
@@ -218,7 +218,7 @@ namespace core
         {
             std::string ret("-af \"");
             auto [num, denom] = ParseFraction(pitch);
-            ret.append(fmt::format("asetrate={},", std::llround((long double)num / denom * sampleRate)));
+            ret.append(fmt::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
             auto togfact = Factoring({num, denom});
             for (const auto &fact : togfact)
             {

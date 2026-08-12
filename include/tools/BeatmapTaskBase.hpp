@@ -1,7 +1,20 @@
+/**
+ * @file    BeatmapTaskBase.hpp
+ * @brief   谱面倍速处理工具的同步基类
+ *
+ * 该模块提供了谱面处理流程的串行实现：读取谱面信息、调用 ffprobe 获取
+ * 音频采样率、处理谱面文件文本、调用 ffmpeg 处理音频并导出结果。
+ *
+ * @author  hPrevInstance
+ * @version 1.0.0
+ * @ingroup tools
+ */
+
 #pragma once
 
 #include "core/AudioProcess.hpp"
 #include "core/FileOperation.hpp"
+#include "tools/Utility.hpp"
 #include <functional>
 #include <cstdio>
 
@@ -12,17 +25,10 @@
  */
 namespace tools
 {
-
-    std::string trim(const std::string &s)
-    {
-        auto start = s.find_first_not_of(" \t\n\r\f\v\"");
-        auto end = s.find_last_not_of(" \t\n\r\f\v\"");
-        return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
-    }
-
     /**
      * @brief  存放歌曲元数据
      *
+     * 音频文件的元信息
      */
     class SongInfo
     {
@@ -31,20 +37,43 @@ namespace tools
     /**
      * @brief 谱面处理基类，用于CLI同步处理
      *
+     * 封装了一次完整的谱面倍速处理流程所需的全部状态与方法：
+     *  - 谱面、音频、背景图的路径
+     *  - 变速/变调参数与模式
+     *  - 音频信息获取与音频重采样处理
      */
     class BeatmapTaskBase
     {
     protected:
-        core::fs::path beatmap_, song_, picture_; // 谱面、歌曲路径、背景图
-        std::string tempo_, pitch_;               // 变速变调
-        core::Option opt_ = 0;                    // 选项
-        std::vector<std::string> lines_;
+        core::fs::path filename_, song_, picture_; // 谱面、歌曲路径、背景图
+        std::string tempo_, pitch_;                // 变速变调
+        core::Option opt_ = 0;                     // 选项
+        core::Difficulty diff_;                    // 已解析的谱面对象
 
+        /**
+         * @brief 获取音频的采样率信息
+         *
+         * 通过调用 ffprobe 读取音频流采样率并保存到 sampleRate_。
+         * 派生类可覆写以实现不同的实现方式。
+         *
+         * @param errorMsg 失败时输出的错误信息
+         * @return true 成功
+         * @return false 失败
+         */
         virtual bool FetchAudioInfo(std::string *errorMsg);
+
+        /**
+         * @brief 处理谱面音频
+         *
+         * @param newdir   输出目录
+         * @param errorMsg 失败时输出的错误信息
+         * @return true 成功
+         * @return false 失败
+         */
         virtual bool ProcessAudio(const core::fs::path &newdir, std::string *errorMsg) const;
 
     private:
-        int sampleRate_;
+        int sampleRate_; // 音频采样率
 
     public:
         /**
@@ -52,25 +81,34 @@ namespace tools
          *
          * @param bmp 谱面的路径
          */
-        BeatmapTaskBase(const core::fs::path &bmp) : beatmap_(bmp)
+        BeatmapTaskBase(const core::fs::path &p) : diff_(p)
         {
-            lines_ = core::LoadBeatmapFile(beatmap_);
+            filename_ = p;
+            diff_.load();
         }
         BeatmapTaskBase(const BeatmapTaskBase &) = default;
         BeatmapTaskBase(BeatmapTaskBase &&) = default;
 
+        /// @brief 设置处理模式
         void SetMode(core::Option opt)
         {
             opt_ = opt;
         }
+        /// @brief 设置变调参数
         void SetPitch(const std::string &p)
         {
             pitch_ = p;
         }
+        /// @brief 设置变速参数
         void SetTempo(const std::string &t)
         {
             tempo_ = t;
         }
+        /**
+         * @brief 执行完整的处理流程并输出到新目录
+         *
+         * @param newdir 输出到的目录
+         */
         virtual void Parse(const core::fs::path &newdir);
         virtual ~BeatmapTaskBase() = default;
     };
@@ -85,11 +123,11 @@ namespace tools
         // 为新文件加上倍速，方便区分
         auto [num, denom] = core::ParseFraction(tempo_.empty() ? pitch_ : tempo_);
         std::vector<std::pair<std::string, std::string>> exinfo;
-        lines_ = core::ProcessBeatmap(beatmap_, lines_, exinfo, static_cast<long double>(num) / denom);
+        auto lines_ = core::ProcessBeatmap(diff_, exinfo, static_cast<long double>(num) / denom);
 
         if (exinfo.empty())
         {
-            throw std::invalid_argument("错误：音频或图片信息缺失 文件：" + beatmap_.string());
+            throw std::invalid_argument("错误：音频或图片信息缺失 文件：" + filename_.string());
         }
 
         // 获取音乐和背景信息
@@ -98,12 +136,12 @@ namespace tools
             if (type == "bg")
             {
                 picture_ = info;
-                picture_ = beatmap_.parent_path() / trim(picture_.string());
+                picture_ = filename_.parent_path() / trim(picture_.string(), " \t\n\r\f\v\"");
             }
             else if (type == "af")
             {
                 song_ = info;
-                song_ = beatmap_.parent_path() / trim(song_.string());
+                song_ = filename_.parent_path() / trim(song_.string(), " \t\n\r\f\v\"");
             }
         }
 
@@ -113,9 +151,9 @@ namespace tools
             throw std::runtime_error("错误：获取音频信息失败：" + err);
         }
 
-        auto out = beatmap_.stem();
+        auto out = filename_.stem();
         out.concat(fmt::format("({:.6g})", static_cast<long double>(num) / denom));
-        out.concat(beatmap_.extension().string());
+        out.concat(filename_.extension().string());
 
         core::ExportFile(newdir, out, lines_);
 
@@ -127,6 +165,15 @@ namespace tools
         core::fs::copy(picture_, dest, core::fs::copy_options::skip_existing);
     }
 
+    /**
+     * @brief 通过 ffprobe 获取音频采样率
+     *
+     * 构造 ffprobe 命令读取第一条音频流的采样率，解析输出并保存到 sampleRate_。
+     *
+     * @param errorMsg 失败时输出的错误信息
+     * @return true 成功
+     * @return false 失败
+     */
     bool BeatmapTaskBase::FetchAudioInfo(std::string *errorMsg = nullptr)
     {
 
@@ -195,9 +242,11 @@ namespace tools
     }
 
     /**
-     * @brief 处理谱面的音频
+     * @brief 调用 ffmpeg 处理音频
      *
-     * @param newdir 新路径
+     * 基于变速/变调参数构造滤镜链，使用 ffmpeg 对音频进行重采样并输出到新目录。
+     *
+     * @param newdir   新路径
      * @param errorMsg 错误信息
      * @return true 成功
      * @return false 失败

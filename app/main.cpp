@@ -1,5 +1,5 @@
 #include "CLI/CLIHandler.hpp"
-#include "gui/MainWindow.hpp"
+#include "gui/GUIHandler.hpp"
 
 #ifdef _WIN32
 #include <windows.h>

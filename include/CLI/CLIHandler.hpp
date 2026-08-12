@@ -1,9 +1,33 @@
+/**
+ * @file    CLIHandler.hpp
+ * @brief   CLI入口
+ *
+ * 提供命令行界面的启动函数。当用户带命令行参数运行程序时，
+ * 将由 main 调用本文件的 RunCLI 进入命令行模式。
+ *
+ * 主要流程：
+ *  1. 用 CLI11 解析命令行选项
+ *  2. 收集待处理的谱面文件列表
+ *  3. 逐一对每个 .osu 谱面调用 BeatmapTaskBase 完成倍速处理
+ *
+ * @author  hPrevInstance
+ * @version 1.0.0
+ * @ingroup cli
+ */
+
 #pragma once
 
 #include "CLI11.hpp"
-#include "tools/ProcessToolsBase.hpp"
+#include "tools/BeatmapTaskBase.hpp"
 #include <set>
 
+/**
+ * @brief 启动 CLI 界面并处理命令行
+ *
+ * @param argc 命令行参数个数
+ * @param argv 命令行参数数组
+ * @return int 程序退出码
+ */
 int RunCLI(int argc, char **argv)
 {
     CLI::App app("OSU!Mania!谱面倍速调节器", "osp");
@@ -32,24 +56,25 @@ int RunCLI(int argc, char **argv)
 
     CLI11_PARSE(app, argc, argv);
 
+    // 收集所有待处理的路径
     std::set<core::fs::path> paths;
     auto absOutput = core::fs::absolute(output);
     for (const auto &path : files)
     {
-        if (core::fs::is_regular_file(path))
+        if (core::fs::is_regular_file(path)) // 是普通文件则直接加入
         {
             if (core::fs::absolute(path).string().find(absOutput.string()) != 0)
             {
                 paths.insert(path);
             }
         }
-        else if (core::fs::is_directory(path))
+        else if (core::fs::is_directory(path)) // 是目录则遍历其中文件
         {
             if (core::fs::absolute(path) == absOutput)
             {
                 continue;
             }
-            if (recursive)
+            if (recursive) // 递归遍历所有子目录
             {
                 for (const auto &entry : core::fs::recursive_directory_iterator(path))
                 {
@@ -76,10 +101,12 @@ int RunCLI(int argc, char **argv)
         }
     }
 
+    // 逐一对每个 .osu 谱面执行倍速处理
     for (const auto &path : paths)
     {
         try
         {
+            // 仅处理常规文件且扩展名为 .osu 的谱面
             if (!core::fs::is_regular_file(path) || path.extension() != ".osu")
             {
                 continue;
@@ -88,9 +115,10 @@ int RunCLI(int argc, char **argv)
             std::cout << "当前文件：" << path.filename().string() << std::endl;
             tools::BeatmapTaskBase beatmap(core::fs::absolute(path));
 
-            auto dp = pitch;
-            auto dt = tempo;
+            auto dp = pitch; // 变调参数
+            auto dt = tempo; // 变速参数
 
+            // -d 模式下逐文件询问各谱面的速度
             if (diff)
             {
                 std::cout << "输入变速，按回车跳过：";
@@ -101,12 +129,14 @@ int RunCLI(int argc, char **argv)
                 dp = tools::trim(dp);
                 dt = tools::trim(dt);
 
+                // 两者都为空时默认不改变速度
                 if (dp.empty() && dt.empty())
                 {
                     dp = dt = "1";
                 }
             }
 
+            // 根据是否提供变调/变速参数组合出处理模式
             core::Option opt = 0;
             if (!dp.empty())
             {
