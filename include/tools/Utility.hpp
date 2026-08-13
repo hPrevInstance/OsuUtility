@@ -11,7 +11,7 @@ namespace tools
      * @param chars 视为空白的字符集合
      * @return std::string 去除首尾空白后的新字符串
      */
-    std::string trim(const std::string &s, const std::string &chars = " \t\n\r\f\v")
+    inline std::string trim(const std::string &s, const std::string &chars = " \t\n\r\f\v")
     {
         auto start = s.find_first_not_of(chars);
         auto end = s.find_last_not_of(chars);

@@ -24,7 +24,12 @@ include_directories(include)   # 所有 #include 都从 include/ 开始搜索
 
 # ===== 5. 主要可执行文件 =====
 add_executable(${PROJECT_NAME}
-    app/main.cpp                # 唯一需要编译的源文件
+    app/main.cpp                # 程序入口
+    src/CLIHandler.cpp          # 命令行入口实现
+    src/BeatmapTaskBase.cpp     # 谱面处理同步基类实现
+    src/AudioProcess.cpp        # 音频倍速参数处理实现
+    src/FileOperation.cpp       # 谱面文件解析与倍速调整实现
+    src/Difficulty.cpp          # osu 谱面文件解析类实现
 )
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
