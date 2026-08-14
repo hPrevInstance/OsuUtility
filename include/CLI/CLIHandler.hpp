@@ -6,8 +6,8 @@
  * 由 main 调用本文件的 RunCLI 进入命令行模式。
  *
  * 主要流程：
- *  1. 用 CLI11 解析命令行选项（含参数校验、--version、帮助）
- *  2. 收集待处理的谱面文件列表（自动排除输出目录）
+ *  1. 用 CLI11 解析命令行选项
+ *  2. 收集待处理的谱面文件列表
  *  3. 逐一对每个 .osu 谱面执行倍速处理，输出进度与统计
  *
  * @author  hPrevInstance
@@ -28,11 +28,11 @@
 
 namespace cli
 {
-    // ============================ 常量 ============================
+    //  常量
     inline constexpr const char *kProgramName = "osp";
     inline constexpr const char *kVersion = "1.0.0";
 
-    // ============================ 颜色输出 ============================
+    //  颜色输出
     inline bool g_useColor = false;
 
     /**
@@ -53,7 +53,7 @@ namespace cli
     inline std::string Dim(const std::string &t) { return Colorize("2", t); }
 
     /**
-     * @brief 自动检测是否应启用颜色输出（标准输出是否为终端）
+     * @brief 自动检测是否应启用颜色输出
      */
     inline bool DetectColor()
     {
@@ -69,39 +69,33 @@ namespace cli
 #endif
     }
 
-    // ============================ 速度校验 ============================
+    //  速度校验
     /**
      * @brief 校验速度字符串，返回空串表示合法，否则返回错误信息
      */
     std::string ValidateSpeed(const std::string &input);
 
     /**
-     * @brief 供 CLI11 使用的速度校验器（保留 inline 供头文件内联）
+     * @brief 供 CLI11 使用的速度校验器
      */
     inline CLI::Validator SpeedValidator()
     {
         return CLI::Validator(
-            [](std::string &value) -> std::string { return ValidateSpeed(value); },
-            "倍速（小数或分数，如 1.5、3/2）",
+            [](std::string &value) -> std::string
+            { return ValidateSpeed(value); },
+            "倍速，小数或分数，如 1.5、3/2",
             "SPEED");
     }
 
-    // ============================ 映射文件条目 ============================
+    //  映射文件条目
     /**
      * @brief 每谱面不同速度的条目
      */
     struct DiffEntry
     {
-        std::string tempo; ///< 变速（空表示不变速）
-        std::string pitch; ///< 变调（空表示不变调）
+        std::string tempo; // 变速
+        std::string pitch; // 变调
     };
 } // namespace cli
 
-/**
- * @brief 启动 CLI 界面并处理命令行
- *
- * @param argc 命令行参数个数
- * @param argv 命令行参数数组
- * @return int 程序退出码
- */
 int RunCLI(int argc, char **argv);

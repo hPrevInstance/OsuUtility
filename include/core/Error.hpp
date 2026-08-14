@@ -25,19 +25,19 @@ namespace core
      */
     enum class ErrorKind
     {
-        Parameter,       ///< 参数 / 速度错误
-        File,            ///< 文件读写错误
-        ExternalProcess, ///< 外部工具（ffmpeg / ffprobe）错误
-        Internal,        ///< 内部逻辑错误
+        Parameter,       // 参数 / 速度错误
+        File,            // 文件读写错误
+        ExternalProcess, // 外部工具错误
+        Internal,        // 内部逻辑错误
     };
 
     /**
      * @brief 统一的进程退出码
      */
-    inline constexpr int EXIT_OK = 0;              ///< 全部成功
-    inline constexpr int EXIT_PARTIAL_FAILURE = 1; ///< 部分文件处理失败
-    inline constexpr int EXIT_USAGE = 2;           ///< 参数 / 用法错误
-    inline constexpr int EXIT_EXTERNAL = 3;        ///< 外部工具缺失 / 失败
+    inline constexpr int EXIT_OK = 0;              // 全部成功
+    inline constexpr int EXIT_PARTIAL_FAILURE = 1; // 部分文件处理失败
+    inline constexpr int EXIT_USAGE = 2;           // 参数 / 用法错误
+    inline constexpr int EXIT_EXTERNAL = 3;        // 外部工具缺失 / 失败
 
     /**
      * @brief 返回错误分类的中文名称

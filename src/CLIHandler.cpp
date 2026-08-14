@@ -27,12 +27,13 @@
 
 namespace cli
 {
-    // ============================ 路径工具 ============================
+    //  路径工具
     namespace
     {
         std::string Lower(std::string s)
         {
-            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
+                           { return static_cast<char>(std::tolower(c)); });
             return s;
         }
 
@@ -57,7 +58,7 @@ namespace cli
         }
     } // namespace
 
-    // ============================ 速度解析与校验 ============================
+    //  速度解析与校验
     std::string ValidateSpeed(const std::string &input)
     {
         auto value = tools::trim(input);
@@ -84,7 +85,7 @@ namespace cli
         return std::string();
     }
 
-    // ============================ 映射文件 ============================
+    //  映射文件
     std::vector<std::string> SplitFields(const std::string &line)
     {
         std::vector<std::string> fields;
@@ -140,7 +141,7 @@ namespace cli
             if (fields.size() < 2 || fields.size() > 3)
             {
                 throw core::MakeParamError(
-                    fmt::format("第 {} 行格式错误（应为：文件名 变速 [变调]）：{}（文件：{}）", lineno, line, file.string()));
+                    fmt::format("文件{}第 {} 行格式错误，应为：文件名 变速 [变调]：{}", lineno, line, file.string()));
             }
 
             DiffEntry entry;
@@ -160,23 +161,23 @@ namespace cli
             }
             catch (const std::exception &e)
             {
-                throw core::MakeParamError(fmt::format("第 {} 行：{}（文件：{}）", lineno, e.what(), file.string()));
+                throw core::MakeParamError(fmt::format("文件{}第 {} 行：{}", lineno, e.what(), file.string()));
             }
 
             if (entry.tempo.empty() && entry.pitch.empty())
             {
-                throw core::MakeParamError(fmt::format("第 {} 行：变速与变调均为空（文件：{}）", lineno, file.string()));
+                throw core::MakeParamError(fmt::format("文件{}第 {} 行：变速与变调均为空", lineno, file.string()));
             }
 
             if (!mapping.emplace(fields[0], std::move(entry)).second)
             {
-                throw core::MakeParamError(fmt::format("第 {} 行：谱面「{}」重复定义（文件：{}）", lineno, fields[0], file.string()));
+                throw core::MakeParamError(fmt::format("文件{}第 {} 行：谱面「{}」重复定义", lineno, fields[0], file.string()));
             }
         }
         return mapping;
     }
 
-    // ============================ 输入路径收集 ============================
+    //  输入路径收集
     std::vector<core::fs::path> CollectBeatmapPaths(const std::vector<core::fs::path> &files,
                                                     const core::fs::path &output,
                                                     bool recursive)
@@ -229,7 +230,7 @@ namespace cli
         return std::vector<core::fs::path>(paths.begin(), paths.end());
     }
 
-    // ============================ 外部工具检测 ============================
+    //  外部工具检测
     bool CommandExists(const std::string &cmd)
     {
 #ifdef _WIN32
@@ -258,12 +259,12 @@ namespace cli
 #endif
     }
 
-    // ============================ 交互输入 ============================
+    //  交互输入
     std::string PromptSpeed(const std::string &label)
     {
         while (true)
         {
-            std::cout << "  请输入" << label << "（小数或分数，回车跳过）：" << std::flush;
+            std::cout << "  请输入" << label << std::flush;
             std::string value;
             std::getline(std::cin, value);
             value = tools::trim(value);
@@ -287,7 +288,7 @@ int RunCLI(int argc, char **argv)
 
     CLI::App app("osu! 谱面倍速调节器 —— 批量调整 .osu 谱面与音频的变速/变调", kProgramName);
 
-    // ----- 基础选项 -----
+    //  基础选项
     std::vector<core::fs::path> files;
     app.add_option("-i,--input", files, "要转换的文件或目录，可指定多个；目录会被遍历")
         ->required()
@@ -295,33 +296,33 @@ int RunCLI(int argc, char **argv)
         ->type_name("PATH...");
 
     core::fs::path output;
-    app.add_option("-o,--output", output, "输出目录（会自动创建），处理结果写入其中")
+    app.add_option("-o,--output", output, "输出目录，处理结果写入其中")
         ->required()
         ->type_name("DIR");
 
     bool recursive = false;
     app.add_flag("-r,--recursive", recursive, "递归遍历输入目录下的所有子目录");
 
-    // ----- 速度选项 -----
-    auto *speedGroup = app.add_option_group("速度设置", "为所有谱面设置同一速度，支持小数或分数（推荐分数以获得精确结果）");
+    //  速度选项
+    auto *speedGroup = app.add_option_group("速度设置", "为所有谱面设置同一速度，支持小数或分数");
     std::string speed, tempo, pitch;
-    auto *optSpeed = speedGroup->add_option("-s,--speed", speed, "同时设置变速与变调（等价于 -t 与 -p 取相同值）");
-    auto *optTempo = speedGroup->add_option("-t,--tempo", tempo, "设置变速（改变速度，保持音调）");
-    auto *optPitch = speedGroup->add_option("-p,--pitch", pitch, "设置变调（改变音调，保持速度）");
+    auto *optSpeed = speedGroup->add_option("-s,--speed", speed, "同时设置变速与变调");
+    auto *optTempo = speedGroup->add_option("-t,--tempo", tempo, "设置变速");
+    auto *optPitch = speedGroup->add_option("-p,--pitch", pitch, "设置变调");
     optSpeed->check(SpeedValidator())->type_name("SPEED");
     optTempo->check(SpeedValidator())->type_name("SPEED");
     optPitch->check(SpeedValidator())->type_name("SPEED");
     optSpeed->excludes(optTempo, optPitch);
 
-    // ----- 差异模式（每谱面不同速度） -----
+    // 差异模式
     std::string diffFile; // 空表示交互式询问
-    auto *optDiff = app.add_option("-d,--diff", diffFile, "为每个谱面单独设置速度：可指定映射文件（每行：文件名 变速 [变调]），省略则交互式逐文件询问")
+    auto *optDiff = app.add_option("-d,--diff", diffFile, "为每个谱面单独设置速度：可指定映射文件->每行：文件名 变速 [变调]，省略则交互式逐文件询问")
                         ->expected(0, 1)
                         ->check(CLI::ExistingFile)
                         ->type_name("[FILE]");
     optDiff->excludes(optSpeed, optTempo, optPitch);
 
-    // ----- 行为选项 -----
+    //  行为选项
     bool dryRun = false;
     app.add_flag("-n,--dry-run", dryRun, "仅列出将执行的操作，不真正处理");
 
@@ -332,7 +333,7 @@ int RunCLI(int argc, char **argv)
     app.add_flag("--verbose", verbose, "输出更详细的调试信息");
 
     bool forceColor = false;
-    app.add_flag("--color", forceColor, "强制启用彩色输出（默认自动检测终端）");
+    app.add_flag("--color", forceColor, "强制启用彩色输出");
 
     app.set_version_flag("-V,--version", std::string(kProgramName) + " " + kVersion);
 
@@ -343,7 +344,7 @@ int RunCLI(int argc, char **argv)
                "  osp -i song.osu -o out -d speed.map\n"
                "  osp -i song.osu -o out -s 2 -n --color");
 
-    // ----- 解析命令行 -----
+    //  解析命令行
     try
     {
         app.parse(argc, argv);
@@ -374,14 +375,14 @@ int RunCLI(int argc, char **argv)
 
     bool diffMode = optDiff->count() > 0;
 
-    // ----- 非差异模式下至少需要一个速度选项 -----
+    //  非差异模式下至少需要一个速度选项
     if (!diffMode && speed.empty() && tempo.empty() && pitch.empty())
     {
-        std::cerr << Red("[错误] ") << "请指定速度：--speed、--tempo 或 --pitch 至少提供一个（或使用 --diff 逐谱面设置）" << std::endl;
+        std::cerr << Red("[错误] ") << "请指定速度：--speed、--tempo 或 --pitch 至少提供一个，或使用 --diff 逐谱面设置" << std::endl;
         return core::EXIT_USAGE;
     }
 
-    // ----- 解析差异模式映射文件 -----
+    //  解析差异模式映射文件
     std::optional<std::map<std::string, DiffEntry>> mapping;
     if (diffMode && !diffFile.empty())
     {
@@ -392,7 +393,7 @@ int RunCLI(int argc, char **argv)
         }
     }
 
-    // ----- 解析全局速度 -----
+    //  解析全局速度
     std::string globalTempo = tempo;
     std::string globalPitch = pitch;
     if (!speed.empty())
@@ -400,7 +401,7 @@ int RunCLI(int argc, char **argv)
         globalTempo = globalPitch = speed;
     }
 
-    // ----- 收集待处理的谱面 -----
+    //  收集待处理的谱面
     auto paths = CollectBeatmapPaths(files, output, recursive);
     if (paths.empty())
     {
@@ -408,7 +409,7 @@ int RunCLI(int argc, char **argv)
         return core::EXIT_USAGE;
     }
 
-    // ----- 外部工具检测 -----
+    //  外部工具检测
     if (!dryRun && (!CommandExists(FFmpegName()) || !CommandExists(FFprobeName())))
     {
         std::cerr << Red("[错误] ") << "未检测到 ffmpeg / ffprobe，请将其加入 PATH 后再运行。" << std::endl;
@@ -430,7 +431,7 @@ int RunCLI(int argc, char **argv)
         std::cout << std::endl;
     }
 
-    // ----- 逐文件处理 -----
+    //  逐文件处理
     std::size_t success = 0, skipped = 0, failed = 0;
     std::vector<std::pair<std::string, std::string>> failures;
 
@@ -451,7 +452,7 @@ int RunCLI(int argc, char **argv)
                     {
                         if (!quiet)
                         {
-                            std::cout << Yellow(fmt::format("[{}/{}] 跳过（映射文件中未定义）：{}", index, paths.size(), path.filename().string())) << std::endl;
+                            std::cout << Yellow(fmt::format("[{}/{}] 跳过，映射文件中未定义：{}", index, paths.size(), path.filename().string())) << std::endl;
                         }
                         ++skipped;
                         continue;
@@ -490,7 +491,7 @@ int RunCLI(int argc, char **argv)
             {
                 if (!quiet)
                 {
-                    std::cout << fmt::format("  [试运行] {}  变速={}  变调={}  →  {}",
+                    std::cout << fmt::format("  [试运行] {}  变速={}  变调={} -> {}",
                                              path.filename().string(),
                                              dt.empty() ? "-" : dt,
                                              dp.empty() ? "-" : dp,
@@ -534,7 +535,7 @@ int RunCLI(int argc, char **argv)
         }
     }
 
-    // ----- 汇总 -----
+    //  汇总
     if (!quiet)
     {
         std::cout << std::endl;
@@ -557,6 +558,3 @@ int RunCLI(int argc, char **argv)
     }
     return core::EXIT_OK;
 }
-
-
-

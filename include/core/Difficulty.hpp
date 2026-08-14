@@ -3,7 +3,7 @@
  * @brief   osu谱面文件解析类
  *
  * 该模块提供了 Difficulty 类，负责逐行读取 osu 谱面文件，
- * 并按章节（如 [General]、[HitObjects] 等）将其内容解析到对应的数据结构中。
+ * 并按章节将其内容解析到对应的数据结构中。
  *
  * @author  hPrevInstance
  * @version 1.0.0
@@ -26,11 +26,11 @@ namespace core
      * @brief 表示一个 osu 谱面对象
      *
      * 该类负责读取并存储一个 .osu 谱面文件被解析后的全部内容，
-     * 供后续（如倍速调整）处理使用。
+     * 供后续处理使用。
      *
      * 内部按 osu 文件格式的章节结构维护：
-     *  - 键值型章节（General/Editor/Metadata/Difficulty/Colors）存于 map 中
-     *  - 列表型章节（Events/TimingPoints/HitObjects）存于 vector 中
+     *  - 键值型章节General/Editor/Metadata/Difficulty/Colors存于 map 中
+     *  - 列表型章节Events/TimingPoints/HitObjects存于 vector 中
      *  - 无法识别的行统一存放到 Unknown_
      */
     class Difficulty
@@ -47,7 +47,7 @@ namespace core
         };
 
         /**
-         * @brief 时间点（[TimingPoints] 章节中的一行）
+         * @brief 时间点
          */
         struct TimingPoint
         {

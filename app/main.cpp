@@ -11,7 +11,7 @@
 namespace
 {
     /**
-     * @brief 尽力开启控制台 UTF-8 输出与 ANSI 颜色支持（Windows）
+     * @brief 尽力开启控制台 UTF-8 输出与 ANSI 颜色支持
      */
     void SetupConsole()
     {
@@ -40,7 +40,7 @@ int main(int argc, char **argv)
         return RunGUI(argc, argv);
     }
 
-    // CLI 顶层兜底：统一捕获未在内部处理的异常并返回对应退出码
+    // CLI 顶层：统一捕获未在内部处理的异常并返回对应退出码
     try
     {
         return RunCLI(argc, argv);
