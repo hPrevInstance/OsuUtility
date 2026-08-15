@@ -1,4 +1,4 @@
-cd ~/Projects/OSUspeeder/build
+cd ~/Projects/OsuUtility/build
 ninja -t clean
 ninja
 cd ../

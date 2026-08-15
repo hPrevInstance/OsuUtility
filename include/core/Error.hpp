@@ -3,7 +3,7 @@
  * @brief   统一异常与退出码定义
  *
  * 为整个项目提供一致的异常类型与退出码，便于 CLI / GUI 统一处理：
- *  - OspError      : 统一异常类型，携带错误分类
+ *  - OutilError    : 统一异常类型，携带错误分类
  *  - 工厂函数      : MakeParamError / MakeFileError / MakeProcessError / MakeInternalError
  *  - 退出码常量    : EXIT_OK / EXIT_PARTIAL_FAILURE / EXIT_USAGE / EXIT_EXTERNAL
  *
@@ -64,7 +64,7 @@ namespace core
      * 继承自 std::runtime_error，额外携带错误分类，
      * what() 输出统一的人性化中文消息。
      */
-    class OspError : public std::runtime_error
+    class OutilError : public std::runtime_error
     {
     private:
         ErrorKind kind_;
@@ -75,7 +75,7 @@ namespace core
         }
 
     public:
-        OspError(ErrorKind kind, std::string message)
+        OutilError(ErrorKind kind, std::string message)
             : std::runtime_error(BuildMessage(kind, message)), kind_(kind)
         {
         }
@@ -89,24 +89,24 @@ namespace core
      * @brief 便于在 throw 语句中直接构造带分类的异常
      */
     ///@{
-    inline OspError MakeParamError(const std::string &msg)
+    inline OutilError MakeParamError(const std::string &msg)
     {
-        return OspError(ErrorKind::Parameter, msg);
+        return OutilError(ErrorKind::Parameter, msg);
     }
 
-    inline OspError MakeFileError(const std::string &msg, const std::string &file = std::string())
+    inline OutilError MakeFileError(const std::string &msg, const std::string &file = std::string())
     {
-        return OspError(ErrorKind::File, file.empty() ? msg : msg + "（文件：" + file + "）");
+        return OutilError(ErrorKind::File, file.empty() ? msg : msg + "（文件：" + file + "）");
     }
 
-    inline OspError MakeProcessError(const std::string &msg, const std::string &file = std::string())
+    inline OutilError MakeProcessError(const std::string &msg, const std::string &file = std::string())
     {
-        return OspError(ErrorKind::ExternalProcess, file.empty() ? msg : msg + "（文件：" + file + "）");
+        return OutilError(ErrorKind::ExternalProcess, file.empty() ? msg : msg + "（文件：" + file + "）");
     }
 
-    inline OspError MakeInternalError(const std::string &msg, const std::string &file = std::string())
+    inline OutilError MakeInternalError(const std::string &msg, const std::string &file = std::string())
     {
-        return OspError(ErrorKind::Internal, file.empty() ? msg : msg + "（文件：" + file + "）");
+        return OutilError(ErrorKind::Internal, file.empty() ? msg : msg + "（文件：" + file + "）");
     }
     ///@}
 }

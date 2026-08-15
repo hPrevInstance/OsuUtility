@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(OSUspeeder VERSION 1.0.0)
+project(OsuUtility VERSION 1.0.0)
 
 #  1. 编译器与标准 
 set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
@@ -24,12 +24,13 @@ include_directories(include)   # 所有 #include 都从 include/ 开始搜索
 
 #  5. 主要可执行文件 
 add_executable(${PROJECT_NAME}
-    app/main.cpp                # 程序入口
-    src/CLIHandler.cpp          # 命令行入口实现
-    src/BeatmapTaskBase.cpp     # 谱面处理同步基类实现
-    src/AudioProcess.cpp        # 音频倍速参数处理实现
-    src/FileOperation.cpp       # 谱面文件解析与倍速调整实现
-    src/Difficulty.cpp          # osu 谱面文件解析类实现
+    app/main.cpp                   # 程序入口
+    src/cli/CLIHandler.cpp         # CLI 顶层分发
+    src/cli/SpeedCommand.cpp       # speed 子命令
+    src/tools/BeatmapTaskBase.cpp  # 谱面处理同步基类实现
+    src/core/AudioProcess.cpp      # 音频倍速参数处理实现
+    src/core/FileOperation.cpp     # 谱面文件解析与倍速调整实现
+    src/core/Difficulty.cpp        # osu 谱面文件解析类实现
 )
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
@@ -60,8 +61,8 @@ target_link_libraries(${PROJECT_NAME}
 #  10. 输出文件名 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
-    OUTPUT_NAME "osp"           # 生成 osp.exe 
-    DEBUG_OUTPUT_NAME "osp_d"   # Debug 模式下生成 osp_d.exe
+    OUTPUT_NAME "outil"           # 生成 outil.exe 
+    DEBUG_OUTPUT_NAME "outil_d"   # Debug 模式下生成 outil_d.exe
 )
 
 #  11. (可选) 隐藏控制台窗口 

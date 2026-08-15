@@ -1,4 +1,4 @@
-#include "CLI/CLIHandler.hpp"
+#include "cli/CLIHandler.hpp"
 #include "core/Error.hpp"
 #include "gui/GUIHandler.hpp"
 
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     {
         return RunCLI(argc, argv);
     }
-    catch (const core::OspError &e)
+    catch (const core::OutilError &e)
     {
         std::cerr << "[错误] " << e.what() << std::endl;
         switch (e.Kind())

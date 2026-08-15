@@ -6,9 +6,12 @@
  * 由 main 调用本文件的 RunCLI 进入命令行模式。
  *
  * 主要流程：
- *  1. 用 CLI11 解析命令行选项
- *  2. 收集待处理的谱面文件列表
- *  3. 逐一对每个 .osu 谱面执行倍速处理，输出进度与统计
+ *  1. 创建顶层 CLI11 应用并注册各功能子命令
+ *  2. 解析命令行参数
+ *  3. 分发到被用户选中的子命令执行
+ *
+ * 当前子命令：
+ *  - speed : 批量调整 .osu 谱面与音频的变速/变调
  *
  * @author  hPrevInstance
  * @version 1.0.0
@@ -17,7 +20,6 @@
 
 #pragma once
 
-#include "CLI11.hpp"
 #include <string>
 
 #ifdef _WIN32
@@ -29,7 +31,7 @@
 namespace cli
 {
     //  常量
-    inline constexpr const char *kProgramName = "osp";
+    inline constexpr const char *kProgramName = "outil";
     inline constexpr const char *kVersion = "1.0.0";
 
     //  颜色输出
@@ -68,34 +70,6 @@ namespace cli
         return isatty(fileno(stdout)) != 0;
 #endif
     }
-
-    //  速度校验
-    /**
-     * @brief 校验速度字符串，返回空串表示合法，否则返回错误信息
-     */
-    std::string ValidateSpeed(const std::string &input);
-
-    /**
-     * @brief 供 CLI11 使用的速度校验器
-     */
-    inline CLI::Validator SpeedValidator()
-    {
-        return CLI::Validator(
-            [](std::string &value) -> std::string
-            { return ValidateSpeed(value); },
-            "倍速，小数或分数，如 1.5、3/2",
-            "SPEED");
-    }
-
-    //  映射文件条目
-    /**
-     * @brief 每谱面不同速度的条目
-     */
-    struct DiffEntry
-    {
-        std::string tempo; // 变速
-        std::string pitch; // 变调
-    };
 } // namespace cli
 
 int RunCLI(int argc, char **argv);
