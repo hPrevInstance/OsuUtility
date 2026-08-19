@@ -1,6 +1,8 @@
+#include "app/MainWindow.h"
 #include "cli/CLIHandler.hpp"
 #include "core/Error.hpp"
-#include "gui/GUIHandler.hpp"
+
+#include <QApplication>
 
 #include <iostream>
 
@@ -37,7 +39,10 @@ int main(int argc, char **argv)
 
     if (argc == 1)
     {
-        return RunGUI(argc, argv);
+        QApplication app(argc, argv);
+        MainWindow window;
+        window.show();
+        return app.exec();
     }
 
     // CLI 顶层：统一捕获未在内部处理的异常并返回对应退出码

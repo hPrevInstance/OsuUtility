@@ -1,12 +1,12 @@
 /**
- * @file    Difficulty.cpp
- * @brief   osu 谱面文件解析类实现
+ * @file    BeatmapParser.cpp
+ * @brief   osu 谱面文件解析器实现
  * @ingroup core
  */
 
-#include "core/Difficulty.hpp"
+#include "core/beatmap/BeatmapParser.hpp"
 #include "core/Error.hpp"
-#include "tools/Utility.hpp"
+#include "common/Utility.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -18,125 +18,119 @@
 
 namespace core
 {
-    void Difficulty::load()
+    Beatmap BeatmapParser::Parse(std::istream &in)
     {
-        order_.clear();
-        std::ifstream ifs(filename_);
-        if (!ifs)
-        {
-            throw MakeFileError("无法打开文件", filename_.string());
-        }
-
+        Beatmap result;
         std::string line, section;
         std::map<std::string, std::function<void(const std::string &)>> handlers;
 
         handlers["[General]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l, ":");
+            common::PunctLexer pl(l, ":");
             if (!pl)
             {
                 return;
             }
             std::string key = pl.NextField();
             std::string value = pl.NextField();
-            if (General_.find(key) == General_.end())
+            if (result.General_.find(key) == result.General_.end())
             {
-                order_.emplace_back(key);
+                result.order_.emplace_back(key);
             }
-            General_[tools::trim(key)] = tools::trim(value);
+            result.General_[common::trim(key)] = common::trim(value);
         };
         handlers["[Editor]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l, ":");
+            common::PunctLexer pl(l, ":");
             if (!pl)
             {
                 return;
             }
             std::string key = pl.NextField();
             std::string value = pl.NextField();
-            if (Editor_.find(key) == Editor_.end())
+            if (result.Editor_.find(key) == result.Editor_.end())
             {
-                order_.emplace_back(key);
+                result.order_.emplace_back(key);
             }
-            Editor_[tools::trim(key)] = tools::trim(value);
+            result.Editor_[common::trim(key)] = common::trim(value);
         };
         handlers["[Metadata]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l, ":");
+            common::PunctLexer pl(l, ":");
             if (!pl)
             {
                 return;
             }
             std::string key = pl.NextField();
             std::string value = pl.NextField();
-            if (Metadata_.find(key) == Metadata_.end())
+            if (result.Metadata_.find(key) == result.Metadata_.end())
             {
-                order_.emplace_back(key);
+                result.order_.emplace_back(key);
             }
-            Metadata_[tools::trim(key)] = tools::trim(value);
+            result.Metadata_[common::trim(key)] = common::trim(value);
         };
         handlers["[Difficulty]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l, ":");
+            common::PunctLexer pl(l, ":");
             if (!pl)
             {
                 return;
             }
             std::string key = pl.NextField();
             std::string value = pl.NextField();
-            if (Difficulty_.find(key) == Difficulty_.end())
+            if (result.Difficulty_.find(key) == result.Difficulty_.end())
             {
-                order_.emplace_back(key);
+                result.order_.emplace_back(key);
             }
-            Difficulty_[tools::trim(key)] = tools::trim(value);
+            result.Difficulty_[common::trim(key)] = common::trim(value);
         };
         handlers["[Colors]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l, ":");
+            common::PunctLexer pl(l, ":");
             if (!pl)
             {
                 return;
             }
             std::string key = pl.NextField();
             std::string value = pl.NextField();
-            if (Colors_.find(key) == Colors_.end())
+            if (result.Colors_.find(key) == result.Colors_.end())
             {
-                order_.emplace_back(key);
+                result.order_.emplace_back(key);
             }
-            Colors_[tools::trim(key)] = tools::trim(value);
+            result.Colors_[common::trim(key)] = common::trim(value);
         };
 
         handlers["[Events]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l);
+            common::PunctLexer pl(l);
             if (!pl)
             {
                 return;
             }
-            Event e;
+            Beatmap::Event e;
             e.type = pl.NextField();
             e.start_time = std::stoi(pl.NextField());
             while (pl)
             {
                 e.args.emplace_back(pl.NextField());
             }
-            Events_.emplace_back(e);
+            result.Events_.emplace_back(e);
         };
         handlers["[TimingPoints]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l);
+            common::PunctLexer pl(l);
             if (!pl)
             {
                 return;
             }
-            TimingPoint tp;
+            Beatmap::TimingPoint tp;
 
             tp.time = std::stod(pl.NextField());
             tp.beat_length = std::stod(pl.NextField());
@@ -147,17 +141,17 @@ namespace core
             tp.inherit = std::stoi(pl.NextField());
             tp.effect = std::stoi(pl.NextField());
 
-            TimingPoints_.emplace_back(tp);
+            result.TimingPoints_.emplace_back(tp);
         };
         handlers["[HitObjects]"] =
-            [this](const std::string &l)
+            [&result](const std::string &l)
         {
-            tools::PunctLexer pl(l, ",");
+            common::PunctLexer pl(l, ",");
             if (!pl)
             {
-                throw 42;
+                throw 42; // 空行或格式错误，交由外层 catch 存入 Unknown_
             }
-            Object o;
+            Beatmap::Object o;
 
             o.x = std::stoi(pl.NextField());
             o.y = std::stoi(pl.NextField());
@@ -179,7 +173,7 @@ namespace core
             auto args = std::string(remainder.begin(), div.base() - (div == remainder.rend() ? 0 : 1));
             auto sdgrp = std::string(div.base(), remainder.end());
 
-            tools::PunctLexer alex(args, "|"), slex(sdgrp, ":");
+            common::PunctLexer alex(args, "|"), slex(sdgrp, ":");
             while (alex)
             {
                 o.args.emplace_back(alex.NextField());
@@ -189,12 +183,12 @@ namespace core
                 o.sound_group.emplace_back(slex.NextField());
             }
 
-            Objects_.emplace_back(o);
+            result.Objects_.emplace_back(o);
         };
 
-        while (std::getline(ifs, line))
+        while (std::getline(in, line))
         {
-            auto trimstr = tools::trim(line);
+            auto trimstr = common::trim(line);
             if (!trimstr.empty() && trimstr.front() == '[' && trimstr.back() == ']')
             {
                 section = trimstr;
@@ -202,7 +196,7 @@ namespace core
             }
             if (!trimstr.empty() && trimstr.find("osu file format") != std::string::npos)
             {
-                version = trimstr;
+                result.version = trimstr;
                 continue;
             }
             auto func = handlers.find(section);
@@ -214,13 +208,25 @@ namespace core
                 }
                 catch (...)
                 {
-                    Unknown_.emplace_back(line);
+                    result.Unknown_.emplace_back(line);
                 }
             }
             else
             {
-                Unknown_.emplace_back(line);
+                result.Unknown_.emplace_back(line);
             }
         }
+
+        return result;
+    }
+
+    Beatmap BeatmapParser::ParseFile(const fs::path &filename)
+    {
+        std::ifstream ifs(filename);
+        if (!ifs)
+        {
+            throw MakeFileError("无法打开文件", filename.string());
+        }
+        return Parse(ifs);
     }
 }

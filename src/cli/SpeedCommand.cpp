@@ -7,8 +7,9 @@
 #include "cli/SpeedCommand.hpp"
 #include "cli/CLIHandler.hpp"
 #include "core/Error.hpp"
-#include "tools/BeatmapTaskBase.hpp"
-#include "tools/Utility.hpp"
+#include "adapters/QProcessRunner.hpp"
+#include "services/SpeedService.hpp"
+#include "common/Utility.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -62,7 +63,7 @@ namespace cli
     //  速度解析与校验
     std::string ValidateSpeed(const std::string &input)
     {
-        auto value = tools::trim(input);
+        auto value = common::trim(input);
         if (value.empty())
         {
             return "倍速不应为空";
@@ -73,7 +74,7 @@ namespace cli
         }
         try
         {
-            auto [num, denom] = core::ParseFraction(value);
+            auto [num, denom] = core::speed::ParseFraction(value);
             if (num <= 0 || denom <= 0)
             {
                 return "倍速必须为正数：" + value;
@@ -134,7 +135,7 @@ namespace cli
             while (std::getline(ifs, line))
             {
                 ++lineno;
-                auto trimmed = tools::trim(line);
+                auto trimmed = common::trim(line);
                 if (trimmed.empty() || trimmed.front() == '#')
                 {
                     continue;
@@ -155,11 +156,11 @@ namespace cli
                 {
                     if (!entry.tempo.empty())
                     {
-                        core::ParseFraction(entry.tempo);
+                        core::speed::ParseFraction(entry.tempo);
                     }
                     if (!entry.pitch.empty())
                     {
-                        core::ParseFraction(entry.pitch);
+                        core::speed::ParseFraction(entry.pitch);
                     }
                 }
                 catch (const std::exception &e)
@@ -270,7 +271,7 @@ namespace cli
                 std::cout << "  请输入" << label << std::flush;
                 std::string value;
                 std::getline(std::cin, value);
-                value = tools::trim(value);
+                value = common::trim(value);
                 if (value.empty())
                 {
                     return value;
@@ -398,6 +399,9 @@ namespace cli
         std::size_t success = 0, skipped = 0, failed = 0;
         std::vector<std::pair<std::string, std::string>> failures;
 
+        adapters::QProcessRunner runner;
+        services::SpeedService service(runner);
+
         std::size_t index = 0;
         for (const auto &path : paths)
         {
@@ -440,14 +444,14 @@ namespace cli
                     dp = dt = "1";
                 }
 
-                core::Option opt = 0;
+                core::speed::Option opt = 0;
                 if (!dp.empty())
                 {
-                    opt |= core::PITCH;
+                    opt |= core::speed::PITCH;
                 }
                 if (!dt.empty())
                 {
-                    opt |= core::TEMPO;
+                    opt |= core::speed::TEMPO;
                 }
 
                 if (dryRun_)
@@ -470,11 +474,13 @@ namespace cli
                     std::cout << fmt::format("[{}/{}] 处理中：{}", index, paths.size(), path.filename().string()) << std::endl;
                 }
 
-                tools::BeatmapTaskBase task(core::fs::absolute(path));
-                task.SetMode(opt);
-                task.SetPitch(dp);
-                task.SetTempo(dt);
-                task.Parse(output_);
+                services::SpeedRequest req;
+                req.beatmapPath = core::fs::absolute(path);
+                req.outputDir = output_;
+                req.tempo = dt;
+                req.pitch = dp;
+                req.mode = opt;
+                service.Process(req);
 
                 if (!quiet_)
                 {

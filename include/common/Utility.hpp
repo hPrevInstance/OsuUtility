@@ -1,8 +1,17 @@
+/**
+ * @file    Utility.hpp
+ * @brief   通用工具
+ *
+ * 提供与业务无关的通用工具：字符串 trim 与标点分隔文本解析器。
+ *
+ * @ingroup common
+ */
+
 #pragma once
 
 #include <string>
 
-namespace tools
+namespace common
 {
     /**
      * @brief 去除字符串首尾的空白字符
@@ -34,8 +43,8 @@ namespace tools
         /**
          * @brief 解析类构造函数
          *
-         * @param std::string 传入要解析的字符串
-         * @param std::string 分隔符集合
+         * @param l   传入要解析的字符串
+         * @param pun 分隔符集合
          */
         PunctLexer(const std::string &l, const std::string &pun = ",") : line(l), puncts(pun), isValid(!line.empty()) {}
         /**

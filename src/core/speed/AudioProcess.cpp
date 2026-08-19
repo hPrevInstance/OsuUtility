@@ -4,7 +4,7 @@
  * @ingroup core
  */
 
-#include "core/AudioProcess.hpp"
+#include "core/speed/AudioProcess.hpp"
 #include "core/Error.hpp"
 
 #include <cmath>
@@ -20,7 +20,7 @@
 #endif
 #include <fmt/format.h>
 
-namespace core
+namespace core::speed
 {
     std::pair<int64_t, int64_t> ParseFraction(const std::string &speed)
     try
@@ -142,7 +142,7 @@ namespace core
         }
         if ((opt & TEMPO) && (opt & PITCH)) // 变速变调
         {
-            std::string ret("-af \"");
+            std::string ret;
             auto [num, denom] = ParseFraction(pitch);
             ret.append(fmt::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
             auto DivFrac = [](const std::string &a, const std::string &b) -> std::string
@@ -158,23 +158,26 @@ namespace core
             {
                 ret.append(fmt::format("atempo={},", fact));
             }
-            ret.append(fmt::format("aresample={}\"", sampleRate));
+            ret.append(fmt::format("aresample={}", sampleRate));
             return ret;
         }
         else if (opt & TEMPO) // 变速不变调
         {
-            std::string ret("-af \"");
+            std::string ret;
             auto factors = Factoring(ParseFraction(tempo));
             for (const auto &fact : factors)
             {
                 ret.append(fmt::format("atempo={},", fact));
             }
-            ret.replace(ret.size() - 1, 1, "\"");
+            if (!ret.empty())
+            {
+                ret.pop_back(); // 去掉末尾逗号
+            }
             return ret;
         }
         else if (opt & PITCH) // 变调不变速
         {
-            std::string ret("-af \"");
+            std::string ret;
             auto [num, denom] = ParseFraction(pitch);
             ret.append(fmt::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
             auto togfact = Factoring({num, denom});
@@ -186,7 +189,7 @@ namespace core
                 auto denom = fact.substr(slash + 1);
                 ret.append(fmt::format("atempo={}/{},", denom, num));
             }
-            ret.append(fmt::format("aresample={}\"", sampleRate));
+            ret.append(fmt::format("aresample={}", sampleRate));
             return ret;
         }
         return "";

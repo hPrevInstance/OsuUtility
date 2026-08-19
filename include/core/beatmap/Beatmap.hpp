@@ -1,40 +1,40 @@
 /**
- * @file    Difficulty.hpp
- * @brief   osu谱面文件解析类
+ * @file    Beatmap.hpp
+ * @brief   osu 谱面数据模型
  *
- * 该模块提供了 Difficulty 类，负责逐行读取 osu 谱面文件，
- * 并按章节将其内容解析到对应的数据结构中。
+ * 纯数据模型，只负责存储一份已解析的谱面内容，不含任何 I/O 逻辑：
+ *  - 解析逻辑见 BeatmapParser
+ *  - 序列化逻辑见 BeatmapSerializer
+ *  - 倍速变换等纯算法见 core/speed
  *
  * @author  hPrevInstance
- * @version 1.0.0
+ * @version 1.2.0
  * @ingroup core
  * @see     https://osu.ppy.sh/wiki/zh/Client/File_formats/osu_(file_format)
  */
 
 #pragma once
 
-#include <filesystem>
 #include <map>
 #include <string>
 #include <vector>
 
 namespace core
 {
-    namespace fs = std::filesystem;
+    class BeatmapParser; // 前置声明：解析器需要增量填充本类的私有成员
 
     /**
      * @brief 表示一个 osu 谱面对象
-     *
-     * 该类负责读取并存储一个 .osu 谱面文件被解析后的全部内容，
-     * 供后续处理使用。
      *
      * 内部按 osu 文件格式的章节结构维护：
      *  - 键值型章节General/Editor/Metadata/Difficulty/Colors存于 map 中
      *  - 列表型章节Events/TimingPoints/HitObjects存于 vector 中
      *  - 无法识别的行统一存放到 Unknown_
      */
-    class Difficulty
+    class Beatmap
     {
+        friend class BeatmapParser;
+
     public:
         /**
          * @brief 谱面事件
@@ -75,11 +75,6 @@ namespace core
         };
 
     private:
-        /**
-         * 以下为键值型章节数据：
-         *  key   —— 章节内条目名
-         *  value —— 条目值
-         */
         std::map<std::string, std::string>
             General_, Editor_, Metadata_, Difficulty_, Colors_;
 
@@ -88,32 +83,17 @@ namespace core
         std::vector<Object> Objects_;           // 打击物件列表
         std::vector<std::string> Unknown_;      // 未能识别的原始行
         std::string version;                    // 文件头
-        fs::path filename_;                     // 谱面文件路径
         std::vector<std::string> order_;        // 各键值章节中条目的出现顺序
 
     public:
-        Difficulty() = default;
-        /** @brief 以指定文件路径构造*/
-        Difficulty(fs::path filename) : filename_(filename) {}
-        Difficulty(const Difficulty &) = default;
-        Difficulty(Difficulty &&) = default;
-        ~Difficulty() = default;
+        Beatmap() = default;
+        Beatmap(const Beatmap &) = default;
+        Beatmap(Beatmap &&) = default;
+        Beatmap &operator=(const Beatmap &) = default;
+        Beatmap &operator=(Beatmap &&) = default;
+        ~Beatmap() = default;
 
-        /**
-         * @brief 读取并解析整个谱面文件
-         *
-         * 逐行扫描文件，依据章节标题将各行的内容分发到对应的解析器中。
-         * 开头包含 "osu file format" 的行会被识别为版本信息。
-         * 任何解析失败或无法识别的行都会被存入 Unknown_
-         *
-         * @throw std::invalid_argument 当文件无法打开时抛出
-         */
-        void load();
-        /**
-         * @name 键值型章节访问器
-         * @brief 返回对应章节的键值映射
-         * @return 对应章节的常量引用
-         */
+        // ======================== Getter ========================
         const std::map<std::string, std::string> &GetGeneral() const { return General_; }
         const std::map<std::string, std::string> &GetEditor() const { return Editor_; }
         const std::map<std::string, std::string> &GetMetadata() const { return Metadata_; }
@@ -121,21 +101,37 @@ namespace core
         const std::map<std::string, std::string> &GetColors() const { return Colors_; }
         /// @brief 返回各键值章节中条目的出现顺序
         const std::vector<std::string> &GetOrder() const { return order_; }
-
-        /**
-         * @name 列表型章节访问器
-         * @brief 返回对应章节的元素列表
-         * @return 对应章节的常量引用
-         */
         const std::vector<Event> &GetEvents() const { return Events_; }
         const std::vector<TimingPoint> &GetTimingPoints() const { return TimingPoints_; }
         const std::vector<Object> &GetObjects() const { return Objects_; }
         /// @brief 返回未被识别、原样保留的行
         const std::vector<std::string> &GetUnknownLines() const { return Unknown_; }
-
-        /// @brief 返回谱面文件路径
-        fs::path GetFilename() const { return filename_; }
         /// @brief 返回谱面文件版本
         std::string GetVersion() const { return version; }
+
+        // ======================== Setter ========================
+        void SetGeneral(const std::map<std::string, std::string> &general) { General_ = general; }
+        void SetEditor(const std::map<std::string, std::string> &editor) { Editor_ = editor; }
+        void SetMetadata(const std::map<std::string, std::string> &metadata) { Metadata_ = metadata; }
+        void SetDifficulty(const std::map<std::string, std::string> &difficulty) { Difficulty_ = difficulty; }
+        void SetColors(const std::map<std::string, std::string> &colors) { Colors_ = colors; }
+        void SetEvents(const std::vector<Event> &events) { Events_ = events; }
+        void SetTimingPoints(const std::vector<TimingPoint> &tps) { TimingPoints_ = tps; }
+        void SetObjects(const std::vector<Object> &objects) { Objects_ = objects; }
+        void SetOrder(const std::vector<std::string> &order) { order_ = order; }
+        void SetUnknownLines(const std::vector<std::string> &unknown) { Unknown_ = unknown; }
+        void SetVersion(const std::string &ver) { version = ver; }
+
+        // 移动版本
+        void SetGeneral(std::map<std::string, std::string> &&general) { General_ = std::move(general); }
+        void SetEditor(std::map<std::string, std::string> &&editor) { Editor_ = std::move(editor); }
+        void SetMetadata(std::map<std::string, std::string> &&metadata) { Metadata_ = std::move(metadata); }
+        void SetDifficulty(std::map<std::string, std::string> &&difficulty) { Difficulty_ = std::move(difficulty); }
+        void SetColors(std::map<std::string, std::string> &&colors) { Colors_ = std::move(colors); }
+        void SetEvents(std::vector<Event> &&events) { Events_ = std::move(events); }
+        void SetTimingPoints(std::vector<TimingPoint> &&tps) { TimingPoints_ = std::move(tps); }
+        void SetObjects(std::vector<Object> &&objects) { Objects_ = std::move(objects); }
+        void SetOrder(std::vector<std::string> &&order) { order_ = std::move(order); }
+        void SetUnknownLines(std::vector<std::string> &&unknown) { Unknown_ = std::move(unknown); }
     };
 }

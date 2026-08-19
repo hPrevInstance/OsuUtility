@@ -21,11 +21,7 @@
 #include <utility>
 #include <vector>
 
-/**
- * @defgroup core 倍速参数处理模块
- * @brief 用于倍速处理
- */
-namespace core
+namespace core::speed
 {
     /**
      * @brief 将有理数化简为a/b的最简分数形式
@@ -53,13 +49,13 @@ namespace core
     inline constexpr Option PITCH = 0b10;
 
     /**
-     * @brief 生成ffmpeg的变速变调参数
+     * @brief 生成 ffmpeg 的变速变调滤镜链
      *
      * @param tempo 变速速度
      * @param pitch 变调速度
-     * @param sampleRate ffprobe返回的变调采样率
+     * @param sampleRate ffprobe 返回的音频采样率
      * @param opt 选择是变速还是变调，或两者都是
-     * @return std::string 生成的参数
+     * @return std::string 纯滤镜链（不含 -af 与引号），由调用方作为 -af 参数传入
      * @throw std::invalid_argument 采样率小于等于0时
      */
     std::string GenerateFilterChain(const std::string &tempo, const std::string &pitch, int sampleRate, Option opt);
