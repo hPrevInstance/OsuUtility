@@ -37,8 +37,6 @@ add_executable(${PROJECT_NAME}
     app/main.cpp                       # 程序入口
     src/app/MainWindow.cpp             # 主窗口（Qt Widgets）
     src/app/MainWindow.ui              # 主窗口界面（Qt Designer）
-    src/cli/CLIHandler.cpp             # CLI 顶层分发
-    src/cli/SpeedCommand.cpp           # speed 子命令
     src/adapters/QProcessRunner.cpp    # 外部进程适配（QProcess 实现）
     src/services/SpeedService.cpp      # 倍速服务（编排 core + adapters）
     src/core/speed/AudioProcess.cpp    # 音频倍速参数处理实现

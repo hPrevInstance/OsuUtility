@@ -1,11 +1,10 @@
 /**
  * @file    Error.hpp
- * @brief   统一异常与退出码定义
+ * @brief   统一异常定义
  *
- * 为整个项目提供一致的异常类型与退出码，便于 CLI / GUI 统一处理：
+ * 为整个项目提供一致的异常类型，便于服务层与 GUI 统一处理：
  *  - OutilError    : 统一异常类型，携带错误分类
  *  - 工厂函数      : MakeParamError / MakeFileError / MakeProcessError / MakeInternalError
- *  - 退出码常量    : EXIT_OK / EXIT_PARTIAL_FAILURE / EXIT_USAGE / EXIT_EXTERNAL
  *
  * @author  hPrevInstance
  * @version 1.0.0
@@ -30,14 +29,6 @@ namespace core
         ExternalProcess, // 外部工具错误
         Internal,        // 内部逻辑错误
     };
-
-    /**
-     * @brief 统一的进程退出码
-     */
-    inline constexpr int EXIT_OK = 0;              // 全部成功
-    inline constexpr int EXIT_PARTIAL_FAILURE = 1; // 部分文件处理失败
-    inline constexpr int EXIT_USAGE = 2;           // 参数 / 用法错误
-    inline constexpr int EXIT_EXTERNAL = 3;        // 外部工具缺失 / 失败
 
     /**
      * @brief 返回错误分类的中文名称
