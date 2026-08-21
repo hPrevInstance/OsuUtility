@@ -14,13 +14,9 @@
 #include "core/speed/SpeedTransform.hpp"
 
 #include <exception>
+#include <format>
 #include <string>
 #include <vector>
-
-#ifndef FMT_HEADER_ONLY
-#define FMT_HEADER_ONLY
-#endif
-#include <fmt/format.h>
 
 #ifdef _WIN32
 static const char *kFfprobeBin = "ffprobe.exe";
@@ -94,7 +90,7 @@ namespace services
         // 4. 导出处理后的谱面
         report(50, "导出谱面文件");
         auto out = req.beatmapPath.stem();
-        out.concat(fmt::format("({:.6g})", static_cast<long double>(num) / denom));
+        out.concat(std::format("({:.6g})", static_cast<double>(num) / denom));
         out.concat(req.beatmapPath.extension().string());
         core::ExportFile(req.outputDir, out, core::BeatmapSerializer::ToLines(transformed));
 

@@ -7,12 +7,8 @@
 #include "core/speed/SpeedTransform.hpp"
 
 #include <cmath>
+#include <format>
 #include <string>
-
-#ifndef FMT_HEADER_ONLY
-#define FMT_HEADER_ONLY
-#endif
-#include <fmt/format.h>
 
 namespace core::speed
 {
@@ -27,7 +23,7 @@ namespace core::speed
             media.audio = general["AudioFilename"];
             if (general.count("PreviewTime") && general["PreviewTime"] != "-1")
             {
-                general["PreviewTime"] = fmt::format("{}", std::llround(std::stold(general["PreviewTime"]) / speed));
+                general["PreviewTime"] = std::format("{}", std::llround(std::stold(general["PreviewTime"]) / speed));
             }
         }
         result.SetGeneral(std::move(general));
@@ -36,7 +32,7 @@ namespace core::speed
         auto metadata = result.GetMetadata();
         if (!metadata.empty())
         {
-            metadata["Version"] += fmt::format(" ({:g})", speed);
+            metadata["Version"] += std::format(" ({:g})", speed);
             metadata["BeatmapID"] = metadata["BeatmapSetID"] = "0";
         }
         result.SetMetadata(std::move(metadata));
@@ -52,7 +48,7 @@ namespace core::speed
             }
             else if (e.type == "2" || e.type == "Break")
             {
-                e.args.at(0) = fmt::format("{}", std::llround(std::stoi(e.args.at(0)) / speed));
+                e.args.at(0) = std::format("{}", std::llround(std::stoi(e.args.at(0)) / speed));
             }
         }
         result.SetEvents(std::move(events));
@@ -76,7 +72,7 @@ namespace core::speed
             obj.time = static_cast<int>(obj.time / speed);
             if (obj.type & (1 << 7) || obj.type & (1 << 3))
             {
-                obj.args.at(0) = fmt::format("{}", std::llround(std::stoi(obj.args.at(0)) / speed));
+                obj.args.at(0) = std::format("{}", std::llround(std::stoi(obj.args.at(0)) / speed));
             }
         }
         result.SetObjects(std::move(objects));

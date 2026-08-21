@@ -9,16 +9,12 @@
 
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <numeric>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-
-#ifndef FMT_HEADER_ONLY
-#define FMT_HEADER_ONLY
-#endif
-#include <fmt/format.h>
 
 namespace core::speed
 {
@@ -81,11 +77,11 @@ namespace core::speed
     }
     catch (const std::invalid_argument &ia)
     {
-        throw MakeParamError(fmt::format("倍速中含有非数字成分：{}", ia.what()));
+        throw MakeParamError(std::format("倍速中含有非数字成分：{}", ia.what()));
     }
     catch (const std::out_of_range &o)
     {
-        throw MakeParamError(fmt::format("倍速过大或精度过高：{}", o.what()));
+        throw MakeParamError(std::format("倍速过大或精度过高：{}", o.what()));
     }
 
     std::vector<std::string> Factoring(const std::pair<int64_t, int64_t> &speed)
@@ -122,13 +118,13 @@ namespace core::speed
         if (a > b)
         {
             std::vector<std::string> ret(q - 1, "2");
-            ret.emplace_back(fmt::format("{}/{}", a, b * (1ULL << (q - 1))));
+            ret.emplace_back(std::format("{}/{}", a, b * (1ULL << (q - 1))));
             return ret;
         }
         else
         {
             std::vector<std::string> ret(q - 1, "1/2");
-            ret.emplace_back(fmt::format("{}/{}", a * (1ULL << (q - 1)), b));
+            ret.emplace_back(std::format("{}/{}", a * (1ULL << (q - 1)), b));
             return ret;
         }
         return {};
@@ -144,21 +140,21 @@ namespace core::speed
         {
             std::string ret;
             auto [num, denom] = ParseFraction(pitch);
-            ret.append(fmt::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
+            ret.append(std::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
             auto DivFrac = [](const std::string &a, const std::string &b) -> std::string
             {
                 auto f1 = ParseFraction(a), f2 = ParseFraction(b);
                 int64_t num = f1.first * f2.second;
                 int64_t den = f1.second * f2.first;
                 long long g = std::gcd(num, den);
-                return fmt::format("{}/{}", num / g, den / g);
+                return std::format("{}/{}", num / g, den / g);
             };
             auto factors = Factoring(ParseFraction(DivFrac(tempo, pitch)));
             for (const auto &fact : factors)
             {
-                ret.append(fmt::format("atempo={},", fact));
+                ret.append(std::format("atempo={},", fact));
             }
-            ret.append(fmt::format("aresample={}", sampleRate));
+            ret.append(std::format("aresample={}", sampleRate));
             return ret;
         }
         else if (opt & TEMPO) // 变速不变调
@@ -167,7 +163,7 @@ namespace core::speed
             auto factors = Factoring(ParseFraction(tempo));
             for (const auto &fact : factors)
             {
-                ret.append(fmt::format("atempo={},", fact));
+                ret.append(std::format("atempo={},", fact));
             }
             if (!ret.empty())
             {
@@ -179,7 +175,7 @@ namespace core::speed
         {
             std::string ret;
             auto [num, denom] = ParseFraction(pitch);
-            ret.append(fmt::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
+            ret.append(std::format("asetrate={},", std::llround((double)num / denom * sampleRate)));
             auto togfact = Factoring({num, denom});
             for (const auto &fact : togfact)
             {
@@ -187,9 +183,9 @@ namespace core::speed
                 auto slash = fact.find('/');
                 auto num = fact.substr(0, slash);
                 auto denom = fact.substr(slash + 1);
-                ret.append(fmt::format("atempo={}/{},", denom, num));
+                ret.append(std::format("atempo={}/{},", denom, num));
             }
-            ret.append(fmt::format("aresample={}", sampleRate));
+            ret.append(std::format("aresample={}", sampleRate));
             return ret;
         }
         return "";

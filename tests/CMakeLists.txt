@@ -11,7 +11,7 @@ project(OsuUtilityTests LANGUAGES CXX)
 #   cmake --build tests/build -j
 #   ctest --test-dir tests/build --output-on-failure
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
@@ -28,7 +28,6 @@ add_library(outil_core STATIC
     ${PROJECT_ROOT}/src/core/FileOperation.cpp
 )
 target_include_directories(outil_core PUBLIC ${PROJECT_ROOT}/include)
-target_compile_definitions(outil_core PUBLIC FMT_HEADER_ONLY)
 
 # 核心算法测试
 add_executable(core_test core_test.cpp)

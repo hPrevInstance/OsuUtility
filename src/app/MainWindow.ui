@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>440</width>
-    <height>340</height>
+    <width>400</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,16 +16,25 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QPushButton" name="processButton">
-      <property name="text">
-       <string>选择谱面并处理（倍速 1.5x）</string>
+     <widget class="QPlainTextEdit" name="nameEdit">
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+      <property name="placeholderText">
+       <string>谱面文件名将显示在此</string>
+      </property>
+      <property name="maximumHeight">
+       <number>48</number>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QPlainTextEdit" name="logView">
+     <widget class="QPlainTextEdit" name="metaEdit">
       <property name="readOnly">
        <bool>true</bool>
+      </property>
+      <property name="placeholderText">
+       <string>处理日志和元数据显示在此</string>
       </property>
      </widget>
     </item>

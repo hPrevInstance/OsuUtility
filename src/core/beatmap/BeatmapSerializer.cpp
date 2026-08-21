@@ -6,15 +6,12 @@
 
 #include "core/beatmap/BeatmapSerializer.hpp"
 
+#include "common/Utility.hpp"
+
+#include <format>
 #include <map>
 #include <string>
 #include <vector>
-
-#ifndef FMT_HEADER_ONLY
-#define FMT_HEADER_ONLY
-#endif
-#include <fmt/format.h>
-#include <fmt/ranges.h>
 
 namespace core
 {
@@ -28,7 +25,7 @@ namespace core
             {
                 if (map.count(key))
                 {
-                    processed.emplace_back(fmt::format("{}{}{}", key, sep, map.at(key)));
+                    processed.emplace_back(std::format("{}{}{}", key, sep, map.at(key)));
                 }
             }
             processed.emplace_back("");
@@ -68,7 +65,7 @@ namespace core
             processed.emplace_back("[Events]");
             for (const auto &e : events)
             {
-                processed.emplace_back(fmt::format("{},{},{}", e.type, e.start_time, fmt::join(e.args, ",")));
+                processed.emplace_back(std::format("{},{},{}", e.type, e.start_time, common::join(e.args, ",")));
             }
             processed.emplace_back("");
         }
@@ -80,8 +77,9 @@ namespace core
             for (const auto &tp : timepts)
             {
                 processed.emplace_back(
-                    fmt::format("{:g},{:g},{},{},{},{},{:d},{}",
-                                tp.time, tp.beat_length, tp.meter, tp.sound_effect, tp.sound_arg, tp.volume, tp.inherit, tp.effect));
+                    std::format("{:g},{:g},{},{},{},{},{:d},{}",
+                                tp.time, tp.beat_length, tp.meter, tp.sound_effect, tp.sound_arg, tp.volume,
+                                static_cast<int>(tp.inherit), tp.effect));
             }
             processed.emplace_back("");
         }
@@ -104,14 +102,14 @@ namespace core
                 {
                     div = ':';
                 }
-                auto res = fmt::format("{},{},{},{},{},", obj.x, obj.y, obj.time, obj.type, obj.beat_sound);
+                auto res = std::format("{},{},{},{},{},", obj.x, obj.y, obj.time, obj.type, obj.beat_sound);
                 if (obj.args.empty())
                 {
-                    res += fmt::format("{}", fmt::join(obj.sound_group, ":"));
+                    res += std::format("{}", common::join(obj.sound_group, ":"));
                 }
                 else
                 {
-                    res += fmt::format("{}{}{}", fmt::join(obj.args, "|"), div, fmt::join(obj.sound_group, ":"));
+                    res += std::format("{}{}{}", common::join(obj.args, "|"), div, common::join(obj.sound_group, ":"));
                 }
                 processed.emplace_back(res);
             }

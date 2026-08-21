@@ -10,3 +10,4 @@ bin/
 compile_commands.json
 tests/build/
 build-*/
+.qtcreator/

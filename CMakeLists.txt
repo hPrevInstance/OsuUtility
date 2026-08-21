@@ -14,7 +14,7 @@ project(OsuUtility VERSION 1.0.0)
 # ============================================================
 
 #  1. 语言标准
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #  2. Qt 环境（Qt 前缀由 toolchain 或 Qt Creator Kit 提供）
@@ -43,15 +43,11 @@ add_executable(${PROJECT_NAME}
     src/core/speed/SpeedTransform.cpp  # 谱面倍速变换纯算法实现
     src/core/beatmap/BeatmapParser.cpp # osu 谱面文件解析实现
     src/core/beatmap/BeatmapSerializer.cpp # 谱面序列化实现
-    src/core/FileOperation.cpp         # 谱面文件导出实现
+    src/core/FileOperation.cpp
+    # 谱面文件导出实现
 )
 
-#  6. 编译定义（宏）
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    FMT_HEADER_ONLY             # fmt 库要求
-)
-
-#  7. 编译器相关的优化/编码选项（仅 GCC/Clang，避免破坏 MSVC Kit）
+#  6. 编译器相关的优化/编码选项（仅 GCC/Clang，避免破坏 MSVC Kit）
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(${PROJECT_NAME} PRIVATE
         $<$<CONFIG:Release>:-O3 -ffunction-sections -fdata-sections>

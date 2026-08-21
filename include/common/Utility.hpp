@@ -10,6 +10,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace common
 {
@@ -25,6 +26,27 @@ namespace common
         auto start = s.find_first_not_of(chars);
         auto end = s.find_last_not_of(chars);
         return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+    }
+
+    /**
+     * @brief 用分隔符连接字符串列表
+     *
+     * @param items 字符串列表
+     * @param sep   分隔符
+     * @return std::string 连接后的字符串
+     */
+    inline std::string join(const std::vector<std::string> &items, const std::string &sep)
+    {
+        std::string result;
+        for (std::size_t i = 0; i < items.size(); ++i)
+        {
+            if (i > 0)
+            {
+                result += sep;
+            }
+            result += items[i];
+        }
+        return result;
     }
 
     /**
